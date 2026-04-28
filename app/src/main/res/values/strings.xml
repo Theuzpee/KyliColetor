@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Geral -->
+    <string name="app_name">APS Coletor</string>
+
+    <!-- IdleContent -->
+    <string name="idle_instruction">Bipe a papeleta para iniciar</string>
+    <string name="idle_operator">Operador: Padrão</string>
+
+    <!-- LoadingContent -->
+    <string name="loading_box">Carregando caixa...</string>
+
+    <!-- CollectingContent -->
+    <string name="label_localizacao">LOCALIZAÇÃO</string>
+    <string name="label_pecas_coletadas">%1$d / %2$d peças</string>
+    <string name="label_endereco_progresso">Endereço %1$d de %2$d</string>
+    <string name="btn_salvar_parcial">Salvar Parcial</string>
+    <string name="btn_finalizar_caixa">Finalizar Caixa</string>
+
+    <!-- ItemCompleteContent -->
+    <string name="item_complete_title">SKU completa!</string>
+    <string name="item_complete_subtitle">Indo para o próximo endereço...</string>
+
+    <!-- BoxFinalizedContent -->
+    <string name="box_finalized_title">Caixa Finalizada!</string>
+    <string name="label_papeleta">Papeleta: %1$s</string>
+    <string name="label_pedido">Pedido: %1$s</string>
+    <string name="btn_nova_caixa">Nova Caixa</string>
+
+    <!-- BoxPartialContent -->
+    <string name="box_partial_title">Caixa Salva</string>
+    <string name="box_partial_subtitle">Picking Parcial</string>
+    <string name="box_partial_instruction">Leve a caixa para a área de resolução.</string>
+
+    <!-- Navegação -->
+    <string name="login_mock_button">Entrar</string>
+</resources>
