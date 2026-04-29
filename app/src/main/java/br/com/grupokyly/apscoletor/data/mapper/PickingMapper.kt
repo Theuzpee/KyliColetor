@@ -9,6 +9,22 @@ import br.com.grupokyly.apscoletor.domain.model.ScannedPiece
 import br.com.grupokyly.apscoletor.data.remote.dto.SyncBoxRequestDto
 import br.com.grupokyly.apscoletor.data.remote.dto.SyncBoxItemDto
 import br.com.grupokyly.apscoletor.data.remote.dto.ScannedPieceDto
+import br.com.grupokyly.apscoletor.data.remote.dto.DivergenceDto
+import br.com.grupokyly.apscoletor.domain.model.SkipReason
+import br.com.grupokyly.apscoletor.domain.model.Divergence
+import br.com.grupokyly.apscoletor.data.local.entity.DivergenceEntity
+
+fun DivergenceEntity.toDomain(): Divergence {
+    return Divergence(
+        id = this.id,
+        pickingItemId = this.pickingItemId,
+        boxId = this.boxId,
+        barcode = this.barcode,
+        reason = this.reason,
+        registeredAt = this.registeredAt,
+        syncedAt = this.syncedAt
+    )
+}
 
 fun BoxEntity.toDomain(): Box {
     return Box(
@@ -47,7 +63,8 @@ fun ScannedPieceEntity.toDomain(): ScannedPiece {
 
 fun Box.toSyncRequestDto(
     items: List<PickingItem>,
-    piecesByItem: Map<Long, List<ScannedPiece>>
+    piecesByItem: Map<Long, List<ScannedPiece>>,
+    divergencesByItem: Map<Long, List<Divergence>> = emptyMap()
 ): SyncBoxRequestDto {
     return SyncBoxRequestDto(
         papeletaCode = papeletaCode,
@@ -67,6 +84,13 @@ fun Box.toSyncRequestDto(
                     ScannedPieceDto(
                         barcode = piece.barcode,
                         scannedAt = piece.scannedAt
+                    )
+                } ?: emptyList(),
+                divergences = divergencesByItem[item.id]?.map { div ->
+                    DivergenceDto(
+                        reason = div.reason.name,
+                        barcode = div.barcode,
+                        registeredAt = div.registeredAt
                     )
                 } ?: emptyList()
             )

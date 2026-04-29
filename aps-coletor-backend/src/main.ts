@@ -10,8 +10,15 @@ async function bootstrap() {
   // Segurança básica
   app.use(helmet());
 
-  // Habilitar CORS
-  app.enableCors();
+  // Habilitar CORS de forma restrita (apenas desenvolvimento/coletor e web da Kyly)
+  app.enableCors({
+    origin: process.env.NODE_ENV === 'production'
+      ? process.env.ALLOWED_ORIGINS?.split(',')
+      : '*',
+    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Api-Key'],
+    credentials: true,
+  });
 
   // Validação global de DTOs
   app.useGlobalPipes(

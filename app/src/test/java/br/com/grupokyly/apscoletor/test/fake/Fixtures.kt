@@ -58,3 +58,25 @@ fun fakeBoxEntity(syncedAt: Long? = null): br.com.grupokyly.apscoletor.data.loca
         syncedAt = syncedAt
     )
 }
+
+fun fakeDivergence(reason: br.com.grupokyly.apscoletor.domain.model.SkipReason = br.com.grupokyly.apscoletor.domain.model.SkipReason.DESABASTECIDO): br.com.grupokyly.apscoletor.domain.model.Divergence {
+    return br.com.grupokyly.apscoletor.domain.model.Divergence(
+        id = 1L,
+        pickingItemId = 10L,
+        boxId = 1L,
+        barcode = null,
+        reason = reason,
+        registeredAt = 1000L
+    )
+}
+
+fun fakeDivergenceEntity(reason: br.com.grupokyly.apscoletor.domain.model.SkipReason = br.com.grupokyly.apscoletor.domain.model.SkipReason.DESABASTECIDO): br.com.grupokyly.apscoletor.data.local.entity.DivergenceEntity {
+    return br.com.grupokyly.apscoletor.data.local.entity.DivergenceEntity(
+        id = 1L,
+        pickingItemId = 10L,
+        boxId = 1L,
+        barcode = null,
+        reason = reason,
+        registeredAt = 1000L
+    )
+}

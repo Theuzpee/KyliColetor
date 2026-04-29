@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, OneToMany } from 'typeorm';
 import { PickingItem } from './picking-item.entity';
+import { DivergenceEntity } from './divergence.entity';
 
 @Entity('boxes')
 export class Box {
@@ -26,4 +27,7 @@ export class Box {
 
   @OneToMany(() => PickingItem, item => item.box, { cascade: true })
   items: PickingItem[];
+
+  @OneToMany(() => DivergenceEntity, div => div.box, { cascade: true })
+  divergences: DivergenceEntity[];
 }

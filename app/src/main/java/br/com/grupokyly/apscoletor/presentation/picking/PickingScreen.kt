@@ -17,6 +17,8 @@ import br.com.grupokyly.apscoletor.presentation.picking.components.ErrorBanner
 import br.com.grupokyly.apscoletor.presentation.picking.components.IdleContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.ItemCompleteContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.LoadingContent
+import br.com.grupokyly.apscoletor.presentation.picking.components.ItemSkippedContent
+import br.com.grupokyly.apscoletor.presentation.picking.components.SkipItemBottomSheet
 
 @Composable
 fun PickingScreen(
@@ -29,6 +31,8 @@ fun PickingScreen(
     var lastCollectingState by androidx.compose.runtime.remember { 
         androidx.compose.runtime.mutableStateOf<PickingUiState.Collecting?>(null) 
     }
+
+    var showSkipSheet by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     DisposableEffect(Unit) {
         viewModel.onEvent(PickingEvent.OnRegisterHardware(context))
@@ -46,10 +50,12 @@ fun PickingScreen(
                 CollectingContent(
                     state = state,
                     onFinalize = { viewModel.onEvent(PickingEvent.OnFinalizeBox) },
-                    onSavePartial = { viewModel.onEvent(PickingEvent.OnSavePartial) }
+                    onSavePartial = { viewModel.onEvent(PickingEvent.OnSavePartial) },
+                    onSkipRequest = { showSkipSheet = true }
                 )
             }
             is PickingUiState.ItemComplete -> ItemCompleteContent(state)
+            is PickingUiState.ItemSkipped -> ItemSkippedContent(state)
             is PickingUiState.BoxFinalized -> BoxFinalizedContent(
                 state = state,
                 onNewBox = { /* Idealmente reseta a viewmodel */ }
@@ -64,7 +70,8 @@ fun PickingScreen(
                     CollectingContent(
                         state = it,
                         onFinalize = { },
-                        onSavePartial = { }
+                        onSavePartial = { },
+                        onSkipRequest = { showSkipSheet = true }
                     )
                 } ?: IdleContent()
                 
@@ -72,6 +79,19 @@ fun PickingScreen(
                     ErrorBanner(message = state.message)
                 }
             }
+        }
+
+        if (showSkipSheet) {
+            SkipItemBottomSheet(
+                onDismissRequest = { showSkipSheet = false },
+                onSkip = { reason ->
+                    showSkipSheet = false
+                    viewModel.onEvent(PickingEvent.OnSkipItem(reason))
+                },
+                onRegisterDivergence = { reason ->
+                    viewModel.onEvent(PickingEvent.OnRegisterDivergence(barcode = null, reason = reason))
+                }
+            )
         }
     }
 }

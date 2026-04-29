@@ -34,7 +34,8 @@ import br.com.grupokyly.apscoletor.presentation.theme.TextGray
 fun CollectingContent(
     state: PickingUiState.Collecting,
     onFinalize: () -> Unit,
-    onSavePartial: () -> Unit
+    onSavePartial: () -> Unit,
+    onSkipRequest: () -> Unit
 ) {
     val progress = if (state.currentItem.quantityRequired > 0) {
         state.collectedCount.toFloat() / state.currentItem.quantityRequired.toFloat()
@@ -114,22 +115,37 @@ fun CollectingContent(
         }
 
         // Botões de Ação
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             OutlinedButton(
-                onClick = onSavePartial,
-                modifier = Modifier.weight(1f).height(56.dp)
+                onClick = onSkipRequest,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = androidx.compose.ui.graphics.Color(0xFFFF9800))
             ) {
-                Text(stringResource(R.string.btn_salvar_parcial))
+                Text(stringResource(R.string.btn_item_em_falta))
             }
-            Button(
-                onClick = onFinalize,
-                modifier = Modifier.weight(1f).height(56.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Text(stringResource(R.string.btn_finalizar_caixa))
+                OutlinedButton(
+                    onClick = onSavePartial,
+                    modifier = Modifier.weight(1f).height(56.dp)
+                ) {
+                    Text(stringResource(R.string.btn_salvar_parcial))
+                }
+                Button(
+                    onClick = onFinalize,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                ) {
+                    Text(stringResource(R.string.btn_finalizar_caixa))
+                }
             }
         }
     }
@@ -148,7 +164,8 @@ fun CollectingContentPreview() {
                 totalItems = 10
             ),
             onFinalize = {},
-            onSavePartial = {}
+            onSavePartial = {},
+            onSkipRequest = {}
         )
     }
 }

@@ -1,6 +1,7 @@
 package br.com.grupokyly.apscoletor.presentation.picking
 
 import android.content.Context
+import br.com.grupokyly.apscoletor.domain.model.SkipReason
 
 sealed class PickingEvent {
     data class OnPapeletaScanned(val code: String) : PickingEvent()
@@ -9,4 +10,6 @@ sealed class PickingEvent {
     object OnSavePartial : PickingEvent()
     data class OnRegisterHardware(val context: Context) : PickingEvent()
     data class OnUnregisterHardware(val context: Context) : PickingEvent()
+    data class OnSkipItem(val reason: SkipReason) : PickingEvent()
+    data class OnRegisterDivergence(val barcode: String?, val reason: SkipReason) : PickingEvent()
 }

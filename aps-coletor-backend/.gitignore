@@ -40,4 +40,5 @@ lerna-debug.log*
 .secret.local
 .env
 .env.test
+.env.local
 .env.production

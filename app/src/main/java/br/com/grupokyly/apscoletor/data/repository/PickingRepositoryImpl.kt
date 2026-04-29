@@ -1,17 +1,20 @@
 package br.com.grupokyly.apscoletor.data.repository
 
 import br.com.grupokyly.apscoletor.data.local.dao.BoxDao
+import br.com.grupokyly.apscoletor.data.local.dao.DivergenceDao
 import br.com.grupokyly.apscoletor.data.local.dao.PickingItemDao
 import br.com.grupokyly.apscoletor.data.local.dao.ScannedPieceDao
+import br.com.grupokyly.apscoletor.data.local.entity.DivergenceEntity
 import br.com.grupokyly.apscoletor.data.local.entity.ScannedPieceEntity
 import br.com.grupokyly.apscoletor.data.mapper.toDomain
+import br.com.grupokyly.apscoletor.data.sync.SyncScheduler
 import br.com.grupokyly.apscoletor.domain.model.Box
 import br.com.grupokyly.apscoletor.domain.model.BoxStatus
 import br.com.grupokyly.apscoletor.domain.model.ItemStatus
 import br.com.grupokyly.apscoletor.domain.model.PickingItem
 import br.com.grupokyly.apscoletor.domain.model.ScanResult
+import br.com.grupokyly.apscoletor.domain.model.SkipReason
 import br.com.grupokyly.apscoletor.domain.repository.PickingRepository
-import br.com.grupokyly.apscoletor.data.sync.SyncScheduler
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
@@ -23,6 +26,7 @@ class PickingRepositoryImpl @Inject constructor(
     private val boxDao: BoxDao,
     private val pickingItemDao: PickingItemDao,
     private val scannedPieceDao: ScannedPieceDao,
+    private val divergenceDao: DivergenceDao,
     private val dispatcher: CoroutineDispatcher,
     private val syncScheduler: SyncScheduler
 ) : PickingRepository {
@@ -90,6 +94,54 @@ class PickingRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(Exception("Erro ao registrar a bipagem. Tente novamente.", e))
+        }
+    }
+
+    override suspend fun registerDivergence(
+        pickingItemId: Long,
+        boxId: Long,
+        barcode: String?,
+        reason: SkipReason
+    ): Result<Unit> = withContext(dispatcher) {
+        try {
+            val divergence = DivergenceEntity(
+                pickingItemId = pickingItemId,
+                boxId = boxId,
+                barcode = barcode,
+                reason = reason,
+                registeredAt = System.currentTimeMillis()
+            )
+            divergenceDao.insert(divergence)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao registrar divergência.", e))
+        }
+    }
+
+    override suspend fun skipItem(
+        pickingItemId: Long,
+        boxId: Long,
+        reason: SkipReason
+    ): Result<ScanResult.ItemSkipped> = withContext(dispatcher) {
+        try {
+            val itemEntity = pickingItemDao.getItemById(pickingItemId)
+                ?: return@withContext Result.failure(Exception("Item não encontrado."))
+
+            val updatedItem = itemEntity.copy(status = ItemStatus.FALTA)
+            pickingItemDao.updateItem(updatedItem)
+
+            val divergence = DivergenceEntity(
+                pickingItemId = pickingItemId,
+                boxId = boxId,
+                barcode = null,
+                reason = reason,
+                registeredAt = System.currentTimeMillis()
+            )
+            divergenceDao.insert(divergence)
+
+            Result.success(ScanResult.ItemSkipped(updatedItem.toDomain(), reason))
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao pular item.", e))
         }
     }
 

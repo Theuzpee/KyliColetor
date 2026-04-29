@@ -33,4 +33,14 @@ class Converters {
             ItemStatus.PENDENTE
         }
     }
+
+    @TypeConverter
+    fun fromSkipReason(value: SkipReason): String {
+        return value.name
+    }
+
+    @TypeConverter
+    fun toSkipReason(value: String): SkipReason {
+        return SkipReason.valueOf(value)
+    }
 }

@@ -16,6 +16,20 @@
     <string name="label_endereco_progresso">Endereço %1$d de %2$d</string>
     <string name="btn_salvar_parcial">Salvar Parcial</string>
     <string name="btn_finalizar_caixa">Finalizar Caixa</string>
+    <string name="msg_caixa_parcial">Faltaram peças no endereço físico.</string>
+    <string name="btn_voltar_inicio">Voltar ao Início</string>
+
+    <string name="btn_item_em_falta">Item em Falta</string>
+    <string name="skip_sheet_title">Por que está pulando este item?</string>
+    <string name="skip_reason_desabastecido">Peça não está no endereço</string>
+    <string name="skip_reason_suja">Suja</string>
+    <string name="skip_reason_amassada">Amassada</string>
+    <string name="skip_reason_desembalada">Desembalada</string>
+    <string name="skip_reason_descascada">Descascada</string>
+    <string name="skip_reason_tag_errado">Tag errado</string>
+    <string name="skip_reason_nao_le_codigo">Não lê código</string>
+    <string name="item_skipped_title">Item pulado</string>
+    <string name="btn_fechar">Fechar</string>
 
     <!-- ItemCompleteContent -->
     <string name="item_complete_title">SKU completa!</string>

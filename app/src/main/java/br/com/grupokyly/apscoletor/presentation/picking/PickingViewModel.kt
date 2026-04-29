@@ -11,6 +11,8 @@ import br.com.grupokyly.apscoletor.domain.usecase.FinalizeBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.OpenBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.RegisterScanUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.SavePartialBoxUseCase
+import br.com.grupokyly.apscoletor.domain.usecase.SkipPickingItemUseCase
+import br.com.grupokyly.apscoletor.domain.usecase.RegisterDivergenceUseCase
 import br.com.grupokyly.apscoletor.hardware.DataWedgeReceiver
 import br.com.grupokyly.apscoletor.hardware.ScanFeedbackManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,6 +30,8 @@ class PickingViewModel @Inject constructor(
     private val registerScanUseCase: RegisterScanUseCase,
     private val finalizeBoxUseCase: FinalizeBoxUseCase,
     private val savePartialBoxUseCase: SavePartialBoxUseCase,
+    private val skipPickingItemUseCase: SkipPickingItemUseCase,
+    private val registerDivergenceUseCase: RegisterDivergenceUseCase,
     private val repository: br.com.grupokyly.apscoletor.domain.repository.PickingRepository,
     private val dataWedgeReceiver: DataWedgeReceiver,
     private val scanFeedbackManager: ScanFeedbackManager
@@ -81,6 +85,8 @@ class PickingViewModel @Inject constructor(
             is PickingEvent.OnSavePartial -> handleSavePartialBox()
             is PickingEvent.OnRegisterHardware -> dataWedgeReceiver.register(event.context)
             is PickingEvent.OnUnregisterHardware -> dataWedgeReceiver.unregister(event.context)
+            is PickingEvent.OnSkipItem -> handleSkipItem(event.reason)
+            is PickingEvent.OnRegisterDivergence -> handleRegisterDivergence(event.barcode, event.reason)
         }
     }
 
@@ -204,6 +210,68 @@ class PickingViewModel @Inject constructor(
                 onFailure = { e ->
                     scanFeedbackManager.scanError()
                     _uiState.value = PickingUiState.Error(e.message ?: "Erro ao salvar parcial.")
+                }
+            )
+        }
+    }
+
+    private fun handleSkipItem(reason: br.com.grupokyly.apscoletor.domain.model.SkipReason) {
+        val currentState = _uiState.value
+        if (currentState !is PickingUiState.Collecting) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            skipPickingItemUseCase(currentState.currentItem.id, currentState.box.id, reason).fold(
+                onSuccess = { result ->
+                    scanFeedbackManager.scanError() // sinal de atenção
+                    
+                    _uiState.value = PickingUiState.ItemSkipped(
+                        skippedItem = result.item,
+                        reason = result.reason,
+                        nextItem = null // Para simplificar, o avanço é gerido ao reler a lista de itens via Room trigger ou refetch
+                    )
+                    
+                    delay(1500)
+                    
+                    // Avançar para próximo pendente
+                    val items = kotlinx.coroutines.flow.firstOrNull { repository.getBoxItems(currentState.box.id) } ?: emptyList()
+                    val nextPending = items.firstOrNull { it.status == ItemStatus.PENDENTE }
+                    
+                    if (nextPending != null) {
+                        _uiState.value = PickingUiState.Collecting(
+                            box = currentState.box,
+                            currentItem = nextPending,
+                            currentItemIndex = items.indexOf(nextPending),
+                            collectedCount = nextPending.quantityCollected,
+                            totalItems = items.size
+                        )
+                    } else {
+                        // Não há mais itens pendentes, tenta finalizar
+                        handleFinalizeBox()
+                    }
+                },
+                onFailure = { e ->
+                    scanFeedbackManager.scanError()
+                    _uiState.value = PickingUiState.Error(e.message ?: "Erro ao pular item.")
+                }
+            )
+        }
+    }
+
+    private fun handleRegisterDivergence(barcode: String?, reason: br.com.grupokyly.apscoletor.domain.model.SkipReason) {
+        val currentState = _uiState.value
+        if (currentState !is PickingUiState.Collecting) return
+
+        viewModelScope.launch(Dispatchers.IO) {
+            registerDivergenceUseCase(currentState.currentItem.id, currentState.box.id, barcode, reason).fold(
+                onSuccess = {
+                    scanFeedbackManager.scanPartialSuccess() // Vibração única leve
+                    // Permanece no estado Collecting
+                },
+                onFailure = { e ->
+                    scanFeedbackManager.scanError()
+                    _uiState.value = PickingUiState.Error(e.message ?: "Erro ao registrar divergência.")
+                    delay(2000)
+                    _uiState.value = currentState
                 }
             )
         }

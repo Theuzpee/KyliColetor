@@ -17,7 +17,10 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config jest-e2e.config.js --runInBand --forceExit",
+    "seed:auth": "ts-node src/database/seeds/auth.seed.ts",
+    "seed:picking": "ts-node src/database/seeds/picking.seed.ts",
+    "seed:all": "npm run seed:auth && npm run seed:picking"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -27,6 +30,7 @@
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.4.2",
+    "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",

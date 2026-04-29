@@ -5,9 +5,10 @@ import { PickingController } from './picking.controller';
 import { Box } from './entities/box.entity';
 import { PickingItem } from './entities/picking-item.entity';
 import { ScannedPiece } from './entities/scanned-piece.entity';
+import { DivergenceEntity } from './entities/divergence.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Box, PickingItem, ScannedPiece])],
+  imports: [TypeOrmModule.forFeature([Box, PickingItem, ScannedPiece, DivergenceEntity])],
   controllers: [PickingController],
   providers: [PickingService],
 })

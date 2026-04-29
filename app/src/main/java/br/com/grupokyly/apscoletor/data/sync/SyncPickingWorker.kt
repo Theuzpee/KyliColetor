@@ -7,6 +7,7 @@ import androidx.work.WorkerParameters
 import br.com.grupokyly.apscoletor.data.local.dao.BoxDao
 import br.com.grupokyly.apscoletor.data.local.dao.PickingItemDao
 import br.com.grupokyly.apscoletor.data.local.dao.ScannedPieceDao
+import br.com.grupokyly.apscoletor.data.local.dao.DivergenceDao
 import br.com.grupokyly.apscoletor.data.mapper.toDomain
 import br.com.grupokyly.apscoletor.data.mapper.toSyncRequestDto
 import br.com.grupokyly.apscoletor.data.remote.ConflictException
@@ -26,6 +27,7 @@ class SyncPickingWorker @AssistedInject constructor(
     private val boxDao: BoxDao,
     private val itemDao: PickingItemDao,
     private val pieceDao: ScannedPieceDao,
+    private val divergenceDao: DivergenceDao,
     private val remoteDataSource: RemoteDataSource
 ) : CoroutineWorker(context, params) {
 
@@ -47,12 +49,16 @@ class SyncPickingWorker @AssistedInject constructor(
                 val items = itemDao.getItemsForBox(box.id).first().map { it.toDomain() }
                 
                 val piecesByItem = mutableMapOf<Long, List<br.com.grupokyly.apscoletor.domain.model.ScannedPiece>>()
+                val divergencesByItem = mutableMapOf<Long, List<br.com.grupokyly.apscoletor.domain.model.Divergence>>()
+                val boxDivergences = divergenceDao.getByBox(box.id).first().map { it.toDomain() }
+
                 for (item in items) {
                     val pieces = pieceDao.getPiecesForItem(item.id).first().map { it.toDomain() }
                     piecesByItem[item.id] = pieces
+                    divergencesByItem[item.id] = boxDivergences.filter { it.pickingItemId == item.id }
                 }
 
-                val requestDto = box.toSyncRequestDto(items, piecesByItem)
+                val requestDto = box.toSyncRequestDto(items, piecesByItem, divergencesByItem)
                 
                 val result = remoteDataSource.syncBox(requestDto)
                 

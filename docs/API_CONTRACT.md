@@ -30,8 +30,15 @@ Responsável por receber os dados completos de uma caixa (FINALIZADA ou PARCIAL)
       "status": "COMPLETO | FALTA | PENDENTE",
       "scannedPieces": [
         {
-          "barcode": "string",
-          "scannedAt": "2026-04-27T14:28:00Z"
+          "barcode": "1000079",
+          "scannedAt": "2026-04-26T14:35:00Z"
+        }
+      ],
+      "divergences": [
+        {
+          "reason": "DESABASTECIDO",
+          "barcode": null,
+          "registeredAt": "2026-04-26T14:36:00Z"
         }
       ]
     }
@@ -73,22 +80,158 @@ Usado para validar antecipadamente se uma papeleta já foi processada (evitando 
 
 ---
 
-## 3. Autenticação (Para Futuro)
+## 3. Consulta de Divergências e Relatórios
 
-Autentica o supervisor e o operador do coletor, gerando um token JWT.
+### 3.1 Lista de Divergências
+Permite consultar todas as divergências, com possibilidade de filtros.
+
+`GET /api/picking/divergences`
+
+**Query Params:**
+- `date`: `string (ISO8601)` - (opcional) Filtra por data de registro
+- `reason`: `SkipReason` - (opcional) Filtra por motivo
+- `boxId`: `string` - (opcional) Filtra por caixa UUID
+
+**Response:**
+- `200 OK`:
+  ```json
+  {
+    "total": 25,
+    "divergences": [
+      {
+        "id": "uuid-string",
+        "papeletaCode": "PAP123",
+        "orderId": "PED-999",
+        "item": {
+          "reference": "1000079"
+        },
+        "barcode": "string | null",
+        "reason": "SUJA",
+        "registeredAt": "2026-04-26T14:36:00Z"
+      }
+    ]
+  }
+  ```
+
+### 3.2 Resumo Gerencial de Divergências
+Retorna a contagem agrupada por `reason`.
+
+`GET /api/picking/divergences/summary`
+
+**Query Params:**
+- `startDate`: `string (ISO8601)` - (opcional) Data de início
+- `endDate`: `string (ISO8601)` - (opcional) Data de fim
+
+**Response:**
+- `200 OK`:
+  ```json
+  {
+    "period": { "start": "2026-04-01T00:00:00Z", "end": "2026-04-30T23:59:59Z" },
+    "total": 45,
+    "byReason": {
+      "DESABASTECIDO": 20,
+      "SUJA": 8,
+      "AMASSADA": 5,
+      "DESEMBALADA": 3,
+      "DESCASCADA": 2,
+      "TAG_ERRADO": 4,
+      "NAO_LE_CODIGO": 3
+    }
+  }
+  ```
+
+### 3.3 Divergências de uma Caixa Específica
+Lista as divergências pertencentes a uma caixa.
+
+`GET /api/picking/boxes/{papeletaCode}/divergences`
+
+**Responses:**
+- `200 OK`: Retorna array com as divergências.
+- `404 Not Found`:
+  ```json
+  { "message": "Caixa com papeleta PAP123 não encontrada" }
+  ```
+
+---
+
+## 4. Autenticação e Sincronização de ERP
+
+A autenticação garante que o coletor opere em nome de um Colaborador validado por um Supervisor de turno. 
+Os dados de login provêm do ERP e são sincronizados via API Key.
+
+### 4.1 Sincronizar Usuários do ERP (Backend-to-Backend)
+
+Atualiza o banco local com os supervisores e operadores do ERP. Usuários que não forem enviados no payload serão inativados localmente.
+
+`POST /api/auth/erp-sync`
+
+**Headers:**
+- `X-Api-Key: <ERP_API_KEY>`
+
+**Body:**
+```json
+{
+  "supervisors": [
+    { "barcode": "SUP-01", "name": "João Supervisor", "shift": "TURNO_1" }
+  ],
+  "operators": [
+    { "barcode": "OP-001", "employeeCode": "EMP999", "name": "Maria Operadora" }
+  ]
+}
+```
+
+**Responses:**
+- `201 Created`: Sincronização com sucesso. Retorna log de sync.
+- `401 Unauthorized`: API Key inválida.
+
+### 4.2 Login no Coletor
+
+Gera um token JWT com base na leitura do crachá do supervisor e do operador. Rate Limit: 10 tentativas/minuto.
 
 `POST /api/auth/login`
 
 **Body:**
 ```json
 {
-  "supervisorCode": "string",
-  "operatorCode": "string"
+  "supervisorBarcode": "SUP-01",
+  "operatorBarcode": "OP-001"
 }
 ```
 
 **Responses:**
-- `200 OK`: Login bem-sucedido.
+- `201 Created`: Login bem-sucedido.
   ```json
-  { "token": "jwt-string", "operatorName": "string" }
+  {
+    "token": "jwt-string",
+    "operatorName": "Maria Operadora",
+    "operatorCode": "EMP999",
+    "supervisorName": "João Supervisor",
+    "shift": "TURNO_1",
+    "expiresAt": "2026-04-28T16:00:00Z"
+  }
   ```
+- `401 Unauthorized`: Códigos inválidos ou inativos.
+- `429 Too Many Requests`: Rate Limit excedido.
+
+### 4.3 Dados do Operador Logado
+
+Verifica se o token ainda é válido e retorna o payload.
+
+`GET /api/auth/me`
+
+**Headers:**
+- `Authorization: Bearer <token>`
+
+**Responses:**
+- `200 OK`: 
+  ```json
+  {
+    "userId": "uuid-string",
+    "operatorCode": "EMP999",
+    "operatorName": "Maria Operadora",
+    "supervisorCode": "SUP-01",
+    "supervisorName": "João Supervisor",
+    "shift": "TURNO_1"
+  }
+  ```
+- `401 Unauthorized`: Token expirado ou inválido.

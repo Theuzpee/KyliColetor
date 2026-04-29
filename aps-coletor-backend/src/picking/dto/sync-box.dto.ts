@@ -1,6 +1,7 @@
-import { IsString, IsNotEmpty, IsEnum, IsArray, ValidateNested, IsInt, Min, IsDate } from 'class-validator';
+import { IsString, IsNotEmpty, IsEnum, IsArray, ValidateNested, IsInt, Min, IsDate, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { SkipReason } from '../enums/skip-reason.enum';
 
 export class ScannedPieceDto {
   @ApiProperty({ description: 'Código de barras bipado', example: '1000079' })
@@ -12,6 +13,22 @@ export class ScannedPieceDto {
   @IsDate()
   @Type(() => Date)
   scannedAt: Date;
+}
+
+export class DivergenceDto {
+  @ApiProperty({ enum: SkipReason, description: 'Motivo da divergência' })
+  @IsEnum(SkipReason)
+  reason: SkipReason;
+
+  @ApiPropertyOptional({ description: 'Código de barras, se houver', example: '1000079' })
+  @IsOptional()
+  @IsString()
+  barcode?: string;
+
+  @ApiProperty({ description: 'Data/Hora do registro' })
+  @IsDate()
+  @Type(() => Date)
+  registeredAt: Date;
 }
 
 export class SyncBoxItemDto {
@@ -54,6 +71,13 @@ export class SyncBoxItemDto {
   @ValidateNested({ each: true })
   @Type(() => ScannedPieceDto)
   scannedPieces: ScannedPieceDto[];
+
+  @ApiPropertyOptional({ type: [DivergenceDto], description: 'Divergências registradas' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DivergenceDto)
+  divergences?: DivergenceDto[];
 }
 
 export class SyncBoxRequestDto {

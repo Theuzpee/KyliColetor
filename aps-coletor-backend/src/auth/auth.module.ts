@@ -5,15 +5,20 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { Supervisor } from './entities/supervisor.entity';
+import { Operator } from './entities/operator.entity';
+import { ErpSyncLog } from './entities/erp-sync-log.entity';
 
 @Module({
   imports: [
+    TypeOrmModule.forFeature([Supervisor, Operator, ErpSyncLog]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: '12h' },
+        signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '8h' },
       }),
       inject: [ConfigService],
     }),

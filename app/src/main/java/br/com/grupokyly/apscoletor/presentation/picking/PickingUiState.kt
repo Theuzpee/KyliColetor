@@ -2,6 +2,7 @@ package br.com.grupokyly.apscoletor.presentation.picking
 
 import br.com.grupokyly.apscoletor.domain.model.Box
 import br.com.grupokyly.apscoletor.domain.model.PickingItem
+import br.com.grupokyly.apscoletor.domain.model.SkipReason
 
 sealed class PickingUiState {
     object Idle : PickingUiState()
@@ -19,6 +20,12 @@ sealed class PickingUiState {
     data class ItemComplete(
         val box: Box,
         val completedItem: PickingItem,
+        val nextItem: PickingItem?
+    ) : PickingUiState()
+    
+    data class ItemSkipped(
+        val skippedItem: PickingItem,
+        val reason: SkipReason,
         val nextItem: PickingItem?
     ) : PickingUiState()
     
