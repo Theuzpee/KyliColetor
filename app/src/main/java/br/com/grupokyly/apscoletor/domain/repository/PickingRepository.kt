@@ -14,4 +14,5 @@ interface PickingRepository {
     suspend fun registerDivergence(pickingItemId: Long, boxId: Long, barcode: String?, reason: SkipReason): Result<Unit>
     suspend fun finalizeBox(boxId: Long): Result<Box>
     suspend fun savePartialBox(boxId: Long): Result<Box>
+    suspend fun saveMultiFloorBox(boxId: Long): Result<Box>
 }

@@ -7,12 +7,15 @@ import br.com.grupokyly.apscoletor.domain.model.BoxStatus
 import br.com.grupokyly.apscoletor.domain.model.ItemStatus
 import br.com.grupokyly.apscoletor.domain.model.PickingItem
 import br.com.grupokyly.apscoletor.domain.model.ScanResult
+import br.com.grupokyly.apscoletor.domain.usecase.GetBoxItemsUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.FinalizeBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.OpenBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.RegisterScanUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.SavePartialBoxUseCase
+import br.com.grupokyly.apscoletor.domain.usecase.SaveMultiFloorBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.SkipPickingItemUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.RegisterDivergenceUseCase
+import br.com.grupokyly.apscoletor.domain.validator.AddressValidator
 import br.com.grupokyly.apscoletor.hardware.DataWedgeReceiver
 import br.com.grupokyly.apscoletor.hardware.ScanFeedbackManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +26,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import br.com.grupokyly.apscoletor.util.Clock
+import br.com.grupokyly.apscoletor.util.toTimeString
 
 @HiltViewModel
 class PickingViewModel @Inject constructor(
@@ -30,15 +35,29 @@ class PickingViewModel @Inject constructor(
     private val registerScanUseCase: RegisterScanUseCase,
     private val finalizeBoxUseCase: FinalizeBoxUseCase,
     private val savePartialBoxUseCase: SavePartialBoxUseCase,
+    private val saveMultiFloorBoxUseCase: SaveMultiFloorBoxUseCase,
     private val skipPickingItemUseCase: SkipPickingItemUseCase,
     private val registerDivergenceUseCase: RegisterDivergenceUseCase,
-    private val repository: br.com.grupokyly.apscoletor.domain.repository.PickingRepository,
+    private val getBoxItemsUseCase: GetBoxItemsUseCase,
+    private val addressValidator: AddressValidator,
     private val dataWedgeReceiver: DataWedgeReceiver,
-    private val scanFeedbackManager: ScanFeedbackManager
+    private val scanFeedbackManager: ScanFeedbackManager,
+    private val clock: Clock
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PickingUiState>(PickingUiState.Idle)
     val uiState: StateFlow<PickingUiState> = _uiState.asStateFlow()
+
+    private fun buildUpdatedHistory(
+        currentHistory: List<br.com.grupokyly.apscoletor.domain.model.ScannedPreview>,
+        barcode: String
+    ): List<br.com.grupokyly.apscoletor.domain.model.ScannedPreview> {
+        val newItem = br.com.grupokyly.apscoletor.domain.model.ScannedPreview(
+            barcode = barcode,
+            time = clock.now().toTimeString()
+        )
+        return (listOf(newItem) + currentHistory).take(3)
+    }
 
     // Mantemos estado interno apenas de referência para evitar buscas custosas a todo instante se desnecessário.
     // Mas o mais seguro é pegar do próprio uiState se ele for Collecting.
@@ -67,7 +86,11 @@ class PickingViewModel @Inject constructor(
                         }
                     }
                     is PickingUiState.Collecting -> {
-                        onEvent(PickingEvent.OnPieceScan(barcode))
+                        if (currentState.addressConfirmation == br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending) {
+                            onEvent(PickingEvent.OnAddressScan(barcode))
+                        } else if (currentState.addressConfirmation == br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Confirmed) {
+                            onEvent(PickingEvent.OnPieceScan(barcode))
+                        }
                     }
                     else -> {
                         // Ignora nos outros estados
@@ -80,9 +103,11 @@ class PickingViewModel @Inject constructor(
     fun onEvent(event: PickingEvent) {
         when (event) {
             is PickingEvent.OnPapeletaScanned -> handlePapeletaScanned(event.code)
+            is PickingEvent.OnAddressScan -> handleAddressScan(event.barcode)
             is PickingEvent.OnPieceScan -> handlePieceScan(event.barcode)
             is PickingEvent.OnFinalizeBox -> handleFinalizeBox()
             is PickingEvent.OnSavePartial -> handleSavePartialBox()
+            is PickingEvent.OnSaveMultiFloor -> handleSaveMultiFloor()
             is PickingEvent.OnRegisterHardware -> dataWedgeReceiver.register(event.context)
             is PickingEvent.OnUnregisterHardware -> dataWedgeReceiver.unregister(event.context)
             is PickingEvent.OnSkipItem -> handleSkipItem(event.reason)
@@ -95,16 +120,24 @@ class PickingViewModel @Inject constructor(
             _uiState.value = PickingUiState.LoadingBox
             openBoxUseCase(code).fold(
                 onSuccess = { box ->
-                    repository.getBoxItems(box.id).collect { items ->
+                    getBoxItemsUseCase(box.id).collect { items ->
                         val currentItem = items.firstOrNull { it.status == ItemStatus.PENDENTE }
                         if (currentItem != null) {
                             val currentIndex = items.indexOf(currentItem)
+                            
+                            if (box.isReopened) {
+                                scanFeedbackManager.scanPartialSuccess()
+                            }
+                            
                             _uiState.value = PickingUiState.Collecting(
                                 box = box,
                                 currentItem = currentItem,
                                 currentItemIndex = currentIndex,
                                 collectedCount = currentItem.quantityCollected,
-                                totalItems = items.size
+                                totalItems = items.size,
+                                lastScannedItems = emptyList(),
+                                isMultiFloor = box.isReopened,
+                                floorLabel = if (box.isReopened) "Continuando coleta — itens pendentes" else ""
                             )
                         } else {
                             // Se não há pendentes, finaliza ou avisa
@@ -120,6 +153,37 @@ class PickingViewModel @Inject constructor(
         }
     }
 
+    private fun handleAddressScan(barcode: String) {
+        val currentState = _uiState.value
+        if (currentState !is PickingUiState.Collecting) return
+        if (currentState.addressConfirmation != br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending) return
+
+        viewModelScope.launch {
+            val expectedAddress = currentState.currentItem.address
+            val isValid = addressValidator.validate(barcode, expectedAddress)
+
+            if (isValid) {
+                scanFeedbackManager.scanPartialSuccess()
+                _uiState.value = currentState.copy(
+                    addressConfirmation = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Confirmed
+                )
+            } else {
+                scanFeedbackManager.scanError()
+                _uiState.value = currentState.copy(
+                    addressConfirmation = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Error
+                )
+                delay(2000)
+                // Se o estado atual ainda for o mesmo (não finalizou ou avançou), reverte
+                val currentNow = _uiState.value
+                if (currentNow is PickingUiState.Collecting && currentNow.currentItem.id == currentState.currentItem.id) {
+                    _uiState.value = currentNow.copy(
+                        addressConfirmation = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending
+                    )
+                }
+            }
+        }
+    }
+
     private fun handlePieceScan(barcode: String) {
         val currentState = _uiState.value
         if (currentState !is PickingUiState.Collecting) return
@@ -130,20 +194,46 @@ class PickingViewModel @Inject constructor(
                     when (result) {
                         is ScanResult.Success -> {
                             scanFeedbackManager.scanPartialSuccess()
+                            
+                            val updatedHistory = buildUpdatedHistory(currentState.lastScannedItems, barcode)
+                            
                             _uiState.value = currentState.copy(
                                 currentItem = result.item,
-                                collectedCount = result.item.quantityCollected
+                                collectedCount = result.item.quantityCollected,
+                                lastScannedItems = updatedHistory
                             )
                         }
                         is ScanResult.QuantityComplete -> {
                             scanFeedbackManager.scanSkuComplete()
+                            
+                            // To keep history when going to next item, it should be passed to next state
+                            // val updatedHistory = buildUpdatedHistory(currentState.lastScannedItems, barcode)
+                            
                             _uiState.value = PickingUiState.ItemComplete(
                                 box = currentState.box,
                                 completedItem = result.item,
                                 nextItem = null // Simplificando
                             )
                             delay(1500)
-                            // Avançar para o próximo
+                            
+                            val items = kotlinx.coroutines.flow.firstOrNull { getBoxItemsUseCase(currentState.box.id) } ?: emptyList()
+                            val nextPending = items.firstOrNull { it.status == ItemStatus.PENDENTE }
+                            
+                            if (nextPending != null) {
+                                _uiState.value = PickingUiState.Collecting(
+                                    box = currentState.box,
+                                    currentItem = nextPending,
+                                    currentItemIndex = items.indexOf(nextPending),
+                                    collectedCount = nextPending.quantityCollected,
+                                    totalItems = items.size,
+                                    lastScannedItems = emptyList(), // zera os lidos quando avança
+                                    isMultiFloor = currentState.isMultiFloor,
+                                    floorLabel = currentState.floorLabel,
+                                    addressConfirmation = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending
+                                )
+                            } else {
+                                handleFinalizeBox()
+                            }
                         }
                         is ScanResult.AlreadyScanned -> {
                             scanFeedbackManager.scanError()
@@ -215,6 +305,37 @@ class PickingViewModel @Inject constructor(
         }
     }
 
+    private fun handleSaveMultiFloor() {
+        val currentState = _uiState.value
+        val boxId = when (currentState) {
+            is PickingUiState.Collecting -> currentState.box.id
+            else -> return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            saveMultiFloorBoxUseCase(boxId).fold(
+                onSuccess = { box ->
+                    scanFeedbackManager.boxPartial()
+                    
+                    val items = kotlinx.coroutines.flow.firstOrNull { getBoxItemsUseCase(box.id) } ?: emptyList()
+                    val totalPending = items.count { it.status == ItemStatus.PENDENTE || it.status == ItemStatus.FALTA }
+                    
+                    _uiState.value = PickingUiState.BoxMultiFloor(
+                        box = box,
+                        collectedInThisFloor = items.count { it.status == ItemStatus.COMPLETO },
+                        totalPending = totalPending
+                    )
+                },
+                onFailure = { e ->
+                    scanFeedbackManager.scanError()
+                    _uiState.value = PickingUiState.Error(e.message ?: "Erro ao salvar multi-andar.")
+                    delay(2000)
+                    _uiState.value = currentState
+                }
+            )
+        }
+    }
+
     private fun handleSkipItem(reason: br.com.grupokyly.apscoletor.domain.model.SkipReason) {
         val currentState = _uiState.value
         if (currentState !is PickingUiState.Collecting) return
@@ -233,18 +354,22 @@ class PickingViewModel @Inject constructor(
                     delay(1500)
                     
                     // Avançar para próximo pendente
-                    val items = kotlinx.coroutines.flow.firstOrNull { repository.getBoxItems(currentState.box.id) } ?: emptyList()
+                    val items = kotlinx.coroutines.flow.firstOrNull { getBoxItemsUseCase(currentState.box.id) } ?: emptyList()
                     val nextPending = items.firstOrNull { it.status == ItemStatus.PENDENTE }
                     
                     if (nextPending != null) {
                         _uiState.value = PickingUiState.Collecting(
-                            box = currentState.box,
-                            currentItem = nextPending,
-                            currentItemIndex = items.indexOf(nextPending),
-                            collectedCount = nextPending.quantityCollected,
-                            totalItems = items.size
-                        )
-                    } else {
+                                box = currentState.box,
+                                currentItem = nextPending,
+                                currentItemIndex = items.indexOf(nextPending),
+                                collectedCount = nextPending.quantityCollected,
+                                totalItems = items.size,
+                                lastScannedItems = currentState.lastScannedItems,
+                                isMultiFloor = currentState.isMultiFloor,
+                                floorLabel = currentState.floorLabel,
+                                addressConfirmation = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending
+                            )
+                        } else {
                         // Não há mais itens pendentes, tenta finalizar
                         handleFinalizeBox()
                     }

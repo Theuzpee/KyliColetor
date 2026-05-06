@@ -4,6 +4,9 @@ import br.com.grupokyly.apscoletor.domain.model.Box
 import br.com.grupokyly.apscoletor.domain.model.BoxStatus
 import br.com.grupokyly.apscoletor.domain.model.ItemStatus
 import br.com.grupokyly.apscoletor.domain.model.PickingItem
+import br.com.grupokyly.apscoletor.domain.model.ScannedPreview
+import br.com.grupokyly.apscoletor.domain.model.UserSession
+import br.com.grupokyly.apscoletor.data.remote.dto.LoginResponseDto
 
 fun fakeBox(status: BoxStatus = BoxStatus.EM_COLETA): Box {
     return Box(
@@ -80,3 +83,25 @@ fun fakeDivergenceEntity(reason: br.com.grupokyly.apscoletor.domain.model.SkipRe
         registeredAt = 1000L
     )
 }
+
+fun fakeScannedPreview(
+    barcode: String = "PECA-001",
+    time: String = "14:32"
+) = ScannedPreview(barcode, time)
+
+fun fakeUserSession() = UserSession(
+    token = "fake.jwt.token",
+    operatorName = "João Silva",
+    operatorCode = "EMP001",
+    supervisorName = "Supervisor T1",
+    shift = "TURNO_1"
+)
+
+fun fakeLoginResponseDto() = LoginResponseDto(
+    token = "fake.jwt.token",
+    operatorName = "João Silva",
+    operatorCode = "EMP001",
+    supervisorName = "Supervisor T1",
+    shift = "TURNO_1",
+    expiresAt = "2025-01-01T22:00:00Z"
+)

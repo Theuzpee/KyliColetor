@@ -36,6 +36,7 @@ class PickingViewModelSkipTest {
     private lateinit var fakeSkipItem: FakeSkipPickingItemUseCase
     private lateinit var fakeRegisterDivergence: FakeRegisterDivergenceUseCase
     private lateinit var fakeReceiver: FakeDataWedgeReceiver
+    private lateinit var fakeClock: FakeClock
     private val fakeFeedback: ScanFeedbackManager = mockk(relaxed = true)
     
     private val fakeRepository: FakePickingRepository = FakePickingRepository()
@@ -51,6 +52,7 @@ class PickingViewModelSkipTest {
         fakeSkipItem = FakeSkipPickingItemUseCase()
         fakeRegisterDivergence = FakeRegisterDivergenceUseCase()
         fakeReceiver = FakeDataWedgeReceiver()
+        fakeClock = FakeClock()
         
         fakeRepository.getBoxItemsResult = listOf(fakePickingItem())
 
@@ -63,7 +65,8 @@ class PickingViewModelSkipTest {
             registerDivergenceUseCase = fakeRegisterDivergence,
             repository = fakeRepository,
             dataWedgeReceiver = fakeReceiver,
-            scanFeedbackManager = fakeFeedback
+            scanFeedbackManager = fakeFeedback,
+            clock = fakeClock
         )
     }
 

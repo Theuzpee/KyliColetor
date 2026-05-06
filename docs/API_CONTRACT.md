@@ -60,6 +60,11 @@ Responsável por receber os dados completos de uma caixa (FINALIZADA ou PARCIAL)
   { "error": "Caixa já sincronizada", "syncId": "uuid-string" }
   ```
 
+### 1.1 Comportamento MULTI_ANDAR
+- Uma caixa com status `MULTI_ANDAR` pode ser sincronizada parcialmente com o servidor para garantir que o progresso não seja perdido.
+- Ao reabrir uma caixa, o Android chama `GET /api/picking/boxes/{papeletaCode}` para verificar o estado atual antes de abrir localmente.
+- A finalização real da caixa só ocorre quando o status muda para `FINALIZADA` ou `PARCIAL`. Apenas nestes status a propriedade `syncedAt` é preenchida e fechada.
+
 ---
 
 ## 2. Verificação de Duplicidade

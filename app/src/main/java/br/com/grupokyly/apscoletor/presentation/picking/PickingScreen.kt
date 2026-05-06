@@ -12,6 +12,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxFinalizedContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxPartialContent
+import br.com.grupokyly.apscoletor.presentation.picking.components.BoxMultiFloorContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.CollectingContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.ErrorBanner
 import br.com.grupokyly.apscoletor.presentation.picking.components.IdleContent
@@ -51,6 +52,7 @@ fun PickingScreen(
                     state = state,
                     onFinalize = { viewModel.onEvent(PickingEvent.OnFinalizeBox) },
                     onSavePartial = { viewModel.onEvent(PickingEvent.OnSavePartial) },
+                    onSaveMultiFloor = { viewModel.onEvent(PickingEvent.OnSaveMultiFloor) },
                     onSkipRequest = { showSkipSheet = true }
                 )
             }
@@ -64,6 +66,10 @@ fun PickingScreen(
                 state = state,
                 onNewBox = { /* Same as above */ }
             )
+            is PickingUiState.BoxMultiFloor -> BoxMultiFloorContent(
+                state = state,
+                onNewBox = { /* Same as above */ }
+            )
             is PickingUiState.Error -> {
                 // Mantém a tela de Collecting desenhada por baixo
                 lastCollectingState?.let {
@@ -71,6 +77,7 @@ fun PickingScreen(
                         state = it,
                         onFinalize = { },
                         onSavePartial = { },
+                        onSaveMultiFloor = { },
                         onSkipRequest = { showSkipSheet = true }
                     )
                 } ?: IdleContent()

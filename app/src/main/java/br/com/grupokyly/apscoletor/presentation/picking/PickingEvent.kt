@@ -5,9 +5,11 @@ import br.com.grupokyly.apscoletor.domain.model.SkipReason
 
 sealed class PickingEvent {
     data class OnPapeletaScanned(val code: String) : PickingEvent()
+    data class OnAddressScan(val barcode: String) : PickingEvent()
     data class OnPieceScan(val barcode: String) : PickingEvent()
     object OnFinalizeBox : PickingEvent()
     object OnSavePartial : PickingEvent()
+    object OnSaveMultiFloor : PickingEvent()
     data class OnRegisterHardware(val context: Context) : PickingEvent()
     data class OnUnregisterHardware(val context: Context) : PickingEvent()
     data class OnSkipItem(val reason: SkipReason) : PickingEvent()

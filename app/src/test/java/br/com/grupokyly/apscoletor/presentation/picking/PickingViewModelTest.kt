@@ -10,6 +10,7 @@ import br.com.grupokyly.apscoletor.test.fake.FakeFinalizeBoxUseCase
 import br.com.grupokyly.apscoletor.test.fake.FakeOpenBoxUseCase
 import br.com.grupokyly.apscoletor.test.fake.FakeRegisterScanUseCase
 import br.com.grupokyly.apscoletor.test.fake.FakeSavePartialBoxUseCase
+import br.com.grupokyly.apscoletor.test.fake.FakeClock
 import br.com.grupokyly.apscoletor.test.fake.fakePickingItem
 import br.com.grupokyly.apscoletor.test.util.MainDispatcherRule
 import io.mockk.mockk
@@ -35,6 +36,7 @@ class PickingViewModelTest {
     private lateinit var fakeFinalize: FakeFinalizeBoxUseCase
     private lateinit var fakeSavePartial: FakeSavePartialBoxUseCase
     private lateinit var fakeReceiver: FakeDataWedgeReceiver
+    private lateinit var fakeClock: FakeClock
     private val fakeFeedback: ScanFeedbackManager = mockk(relaxed = true)
     
     // The repository is also needed since we injected it to fix the PickingViewModel
@@ -49,6 +51,7 @@ class PickingViewModelTest {
         fakeFinalize = FakeFinalizeBoxUseCase()
         fakeSavePartial = FakeSavePartialBoxUseCase()
         fakeReceiver = FakeDataWedgeReceiver()
+        fakeClock = FakeClock()
         
         // Mocking the repository getBoxItems to return a valid flow to avoid sticking in LoadingBox
         val itemsFlow = kotlinx.coroutines.flow.flowOf(listOf(fakePickingItem()))
@@ -61,7 +64,8 @@ class PickingViewModelTest {
             savePartialBoxUseCase = fakeSavePartial,
             repository = fakeRepository,
             dataWedgeReceiver = fakeReceiver,
-            scanFeedbackManager = fakeFeedback
+            scanFeedbackManager = fakeFeedback,
+            clock = fakeClock
         )
     }
 

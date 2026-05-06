@@ -1,120 +1,234 @@
 package br.com.grupokyly.apscoletor.presentation.picking.components
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import br.com.grupokyly.apscoletor.R
 import br.com.grupokyly.apscoletor.domain.model.Box
 import br.com.grupokyly.apscoletor.domain.model.BoxStatus
 import br.com.grupokyly.apscoletor.domain.model.ItemStatus
 import br.com.grupokyly.apscoletor.domain.model.PickingItem
 import br.com.grupokyly.apscoletor.presentation.picking.PickingUiState
-import br.com.grupokyly.apscoletor.presentation.theme.ApsColetorTheme
-import br.com.grupokyly.apscoletor.presentation.theme.SuccessGreen
-import br.com.grupokyly.apscoletor.presentation.theme.TextGray
+import br.com.grupokyly.apscoletor.presentation.theme.*
+
+import br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState
 
 @Composable
 fun CollectingContent(
     state: PickingUiState.Collecting,
     onFinalize: () -> Unit,
     onSavePartial: () -> Unit,
+    onSaveMultiFloor: () -> Unit,
     onSkipRequest: () -> Unit
 ) {
+) {
+    // Fake progress calculation
     val progress = if (state.currentItem.quantityRequired > 0) {
         state.collectedCount.toFloat() / state.currentItem.quantityRequired.toFloat()
-    } else 0f
-    
-    val isComplete = state.collectedCount >= state.currentItem.quantityRequired
-    val progressColor = if (isComplete) SuccessGreen else MaterialTheme.colorScheme.primary
-
-    val progress = if (state.totalItems > 0) {
-        state.currentItemIndex.toFloat() / state.totalItems.toFloat()
     } else 0f
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(BackgroundPrimary)
             .padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Topo: Progresso Geral
-        Column {
+        // 1. Cabeçalho (Status Bar Mock)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = Icons.Default.Inventory, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = state.box.orderId, color = TextSecondary, fontSize = 12.sp)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = Icons.Default.BatteryFull, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(16.dp))
+                Text(text = "100%", color = SuccessGreen, fontSize = 12.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(imageVector = Icons.Default.Wifi, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(16.dp))
+                Text(text = "Online", color = SuccessGreen, fontSize = 12.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Operador", color = TextSecondary, fontSize = 12.sp)
+            }
+        }
+        
+        if (state.isMultiFloor) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF2A2500), RoundedCornerShape(4.dp))
+                    .border(1.dp, PrimaryYellow, RoundedCornerShape(4.dp))
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowUpward,
+                    contentDescription = null,
+                    tint = PrimaryYellow,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.collecting_multi_floor_banner),
+                    color = PrimaryYellow,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 2. Bloco do endereço
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(BackgroundSecondary, RoundedCornerShape(8.dp))
+                .border(2.dp, PrimaryYellow, RoundedCornerShape(8.dp))
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(text = "VÁ PARA O ENDEREÇO", fontSize = 11.sp, color = TextSecondary)
+            Text(
+                text = state.currentItem.address,
+                fontFamily = FontFamily.Monospace,
+                fontSize = 48.sp,
+                fontWeight = FontWeight.Bold,
+                color = PrimaryYellow
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 3. Bloco SKU
+        Column(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${state.collectedCount} de ${state.currentItem.quantityRequired} peças",
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Text(
+                    text = "SKU ${state.currentItem.id}", // placeholder for barcode
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
             LinearProgressIndicator(
                 progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(4.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surface
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp),
+                color = SuccessGreen,
+                trackColor = BackgroundSecondary
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.label_endereco_progresso, state.currentItemIndex + 1, state.totalItems),
-                style = MaterialTheme.typography.labelMedium,
-                color = TextGray
-            )
-        }
-
-        // Centro: Endereço e Produto
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = stringResource(R.string.label_localizacao),
-                style = MaterialTheme.typography.labelMedium,
-                color = TextGray
-            )
-            Text(
-                text = state.currentItem.address,
-                style = MaterialTheme.typography.displayLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-            
-            Text(
                 text = "${state.currentItem.reference} · ${state.currentItem.color} · ${state.currentItem.size}",
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onBackground
+                fontFamily = FontFamily.Monospace,
+                fontSize = 14.sp,
+                color = TextPrimary
             )
         }
+        Spacer(modifier = Modifier.height(16.dp))
 
-        // Contador
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
+        // 4. Campo de confirmação de endereço
+        val (bgColor, borderColor, icon, msg, iconTint) = when (state.addressConfirmation) {
+            AddressConfirmationState.Pending -> listOf(BackgroundSecondary, PrimaryYellow, Icons.Default.LocationOn, stringResource(R.string.address_pending), PrimaryYellow)
+            AddressConfirmationState.Confirmed -> listOf(Color(0xFF1A2A1A), SuccessGreen, Icons.Default.CheckCircle, stringResource(R.string.address_confirmed), SuccessGreen)
+            AddressConfirmationState.Error -> listOf(Color(0xFF2A1A1A), ErrorRed, Icons.Default.Error, stringResource(R.string.address_error), ErrorRed)
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(bgColor as Color, RoundedCornerShape(8.dp))
+                .border(2.dp, borderColor as Color, RoundedCornerShape(8.dp))
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = stringResource(R.string.label_pecas_coletadas, state.collectedCount, state.currentItem.quantityRequired),
-                style = MaterialTheme.typography.headlineMedium,
-                color = progressColor
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier.fillMaxWidth().height(12.dp),
-                color = progressColor,
-                trackColor = MaterialTheme.colorScheme.surface
-            )
+            Icon(imageVector = icon as androidx.compose.ui.graphics.vector.ImageVector, contentDescription = null, tint = iconTint as Color)
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(text = msg as String, color = TextPrimary, fontSize = 14.sp)
         }
+        if (state.lastScannedItems.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(16.dp))
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(BackgroundSecondary, RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.last_reads),
+                    fontSize = 11.sp,
+                    color = TextSecondary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                state.lastScannedItems.forEach { item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = SuccessGreen,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = item.barcode,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                color = TextPrimary
+                            )
+                        }
+                        Text(
+                            text = item.time,
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.weight(1f))
 
-        // Botões de Ação
+        // 6. Botões do rodapé
+        val isActionsEnabled = state.addressConfirmation == AddressConfirmationState.Confirmed
+        
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -124,9 +238,11 @@ fun CollectingContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = androidx.compose.ui.graphics.Color(0xFFFF9800))
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(1.5.dp, WarningOrange),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = WarningOrange)
             ) {
-                Text(stringResource(R.string.btn_item_em_falta))
+                Text(stringResource(R.string.btn_item_em_falta), fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             }
             
             Row(
@@ -135,16 +251,38 @@ fun CollectingContent(
             ) {
                 OutlinedButton(
                     onClick = onSavePartial,
-                    modifier = Modifier.weight(1f).height(56.dp)
+                    enabled = isActionsEnabled,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, if (isActionsEnabled) TextSecondary else TextSecondary.copy(alpha = 0.4f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary, disabledContentColor = TextPrimary.copy(alpha = 0.4f))
                 ) {
-                    Text(stringResource(R.string.btn_salvar_parcial))
+                    Text(stringResource(R.string.btn_salvar_parcial), fontSize = 14.sp)
+                }
+                OutlinedButton(
+                    onClick = onSaveMultiFloor,
+                    enabled = isActionsEnabled,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, if (isActionsEnabled) PrimaryYellow else PrimaryYellow.copy(alpha = 0.4f)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryYellow, disabledContentColor = PrimaryYellow.copy(alpha = 0.4f))
+                ) {
+                    Text(stringResource(R.string.btn_save_multi_floor), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 }
                 Button(
                     onClick = onFinalize,
-                    modifier = Modifier.weight(1f).height(56.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                    enabled = isActionsEnabled,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(56.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryYellow, contentColor = Color.Black)
                 ) {
-                    Text(stringResource(R.string.btn_finalizar_caixa))
+                    Text(stringResource(R.string.btn_finalizar_caixa), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -165,6 +303,7 @@ fun CollectingContentPreview() {
             ),
             onFinalize = {},
             onSavePartial = {},
+            onSaveMultiFloor = {},
             onSkipRequest = {}
         )
     }

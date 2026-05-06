@@ -7,5 +7,6 @@ data class Box(
     val status: BoxStatus,
     val createdAt: Long,
     val updatedAt: Long,
-    val syncedAt: Long? = null
+    val syncedAt: Long? = null,
+    val isReopened: Boolean = false
 )

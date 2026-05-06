@@ -14,7 +14,11 @@ sealed class PickingUiState {
         val currentItem: PickingItem,
         val currentItemIndex: Int,
         val collectedCount: Int,
-        val totalItems: Int
+        val totalItems: Int,
+        val lastScannedItems: List<br.com.grupokyly.apscoletor.domain.model.ScannedPreview> = emptyList(),
+        val isMultiFloor: Boolean = false,
+        val floorLabel: String = "",
+        val addressConfirmation: br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending
     ) : PickingUiState()
     
     data class ItemComplete(
@@ -32,6 +36,12 @@ sealed class PickingUiState {
     data class BoxFinalized(val box: Box) : PickingUiState()
     
     data class BoxPartial(val box: Box) : PickingUiState()
+    
+    data class BoxMultiFloor(
+        val box: Box,
+        val collectedInThisFloor: Int,
+        val totalPending: Int
+    ) : PickingUiState()
     
     data class Error(val message: String) : PickingUiState()
 }

@@ -37,7 +37,12 @@ class PickingRepositoryImpl @Inject constructor(
             if (boxEntity == null) {
                 Result.failure(Exception("Caixa não encontrada. Verifique a papeleta e tente novamente."))
             } else {
-                Result.success(boxEntity.toDomain())
+                val box = boxEntity.toDomain()
+                if (box.status == BoxStatus.MULTI_ANDAR) {
+                    Result.success(box.copy(isReopened = true))
+                } else {
+                    Result.success(box)
+                }
             }
         } catch (e: Exception) {
             Result.failure(Exception("Erro ao abrir a caixa. Verifique o leitor ou tente novamente.", e))
@@ -175,6 +180,27 @@ class PickingRepositoryImpl @Inject constructor(
             Result.success(updatedBox)
         } catch (e: Exception) {
             Result.failure(Exception("Erro ao salvar caixa parcial.", e))
+        }
+    }
+
+    override suspend fun saveMultiFloorBox(boxId: Long): Result<Box> = withContext(dispatcher) {
+        try {
+            val items = pickingItemDao.getItemsByBox(boxId).firstOrNull() ?: emptyList()
+            val hasCollected = items.any { it.status == ItemStatus.COMPLETO }
+            if (!hasCollected) {
+                return@withContext Result.failure(Exception("É necessário coletar pelo menos uma peça antes de salvar."))
+            }
+
+            val updatedAt = System.currentTimeMillis()
+            boxDao.updateStatus(boxId, BoxStatus.MULTI_ANDAR, updatedAt)
+            
+            val updatedBox = boxDao.getBoxById(boxId)?.toDomain() 
+                ?: throw Exception("Falha ao recuperar a caixa atualizada.")
+            
+            syncScheduler.scheduleSync()
+            Result.success(updatedBox)
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao salvar caixa multi-andar.", e))
         }
     }
 }

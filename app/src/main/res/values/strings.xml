@@ -48,4 +48,45 @@
 
     <!-- Navegação -->
     <string name="login_mock_button">Entrar</string>
+    <!-- Login -->
+    <string name="login_title">APS Coletor</string>
+    <string name="login_subtitle">Grupo Kyly</string>
+    <string name="login_supervisor_label">SUPERVISOR</string>
+    <string name="login_operator_label">COLABORADOR</string>
+    <string name="login_supervisor_hint">Bipe o crachá do supervisor</string>
+    <string name="login_operator_hint">Bipe o seu crachá</string>
+    <string name="login_btn">Entrar</string>
+    <string name="login_error">Crachá não reconhecido. Tente novamente.</string>
+    <string name="shift_1">1º TURNO</string>
+    <string name="shift_2">2º TURNO</string>
+    <string name="shift_3">3º TURNO</string>
+
+    <!-- Status bar -->
+    <string name="status_online">Online</string>
+    <string name="status_offline">Offline</string>
+
+    <!-- Confirmação de endereço -->
+    <string name="address_pending">Bipe o endereço para confirmar</string>
+    <string name="address_confirmed">Endereço confirmado — bipe a peça</string>
+    <string name="address_error">Endereço incorreto — verifique a localização</string>
+    <string name="address_hint">O código deve corresponder a: %1$s</string>
+
+    <!-- Histórico -->
+    <string name="last_reads">ÚLTIMAS LEITURAS</string>
+
+    <!-- Caixa finalizada -->
+    <string name="box_finalized_subtitle">Todas as peças foram coletadas</string>
+
+    <!-- Caixa parcial -->
+    <string name="box_partial_badge">PARCIAL</string>
+
+    <!-- Multi-Andar -->
+    <string name="box_multi_floor_title">Caixa Salva — Multi-Andar</string>
+    <string name="box_multi_floor_subtitle">Continue a coleta no próximo andar</string>
+    <string name="box_multi_floor_badge">MULTI-ANDAR</string>
+    <string name="box_multi_floor_instruction">Bipe a papeleta novamente no próximo andar para continuar</string>
+    <string name="btn_save_multi_floor">Salvar Multi-Andar</string>
+    <string name="collecting_multi_floor_banner">Continuando coleta — itens pendentes</string>
+    <string name="box_multi_floor_collected">Coletadas neste andar</string>
+    <string name="box_multi_floor_pending">Ainda pendentes</string>
 </resources>
