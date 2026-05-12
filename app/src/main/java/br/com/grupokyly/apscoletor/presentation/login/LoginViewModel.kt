@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.grupokyly.apscoletor.domain.usecase.LoginUseCase
-import br.com.grupokyly.apscoletor.hardware.DataWedgeReceiver
+import br.com.grupokyly.apscoletor.hardware.ScannerReceiver
 import br.com.grupokyly.apscoletor.hardware.ScanFeedbackManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -18,7 +18,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val dataWedgeReceiver: DataWedgeReceiver,
+    private val scannerReceiver: ScannerReceiver,
     private val scanFeedbackManager: ScanFeedbackManager
 ) : ViewModel() {
 
@@ -29,7 +29,7 @@ class LoginViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            dataWedgeReceiver.scannedDataFlow.collect { barcode ->
+            scannerReceiver.scannedDataFlow.collect { barcode ->
                 if (barcode.isNotBlank()) {
                     handleScan(barcode)
                 }
@@ -82,15 +82,42 @@ class LoginViewModel @Inject constructor(
                 }
             }
             is LoginEvent.OnRegisterHardware -> {
-                dataWedgeReceiver.register(event.context)
+                scannerReceiver.register(event.context)
             }
             is LoginEvent.OnUnregisterHardware -> {
-                dataWedgeReceiver.unregister(event.context)
+                scannerReceiver.unregister(event.context)
             }
             is LoginEvent.OnClearError -> {
                 supervisorBarcode = null
                 _uiState.value = LoginUiState.Idle
             }
+            is LoginEvent.OnLogin -> {
+                handleLogin(event.supervisorBarcode, event.operatorBarcode)
+            }
+        }
+    }
+
+    private fun handleLogin(
+        supervisorBarcode: String,
+        operatorBarcode: String
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = LoginUiState.Loading
+            val result = loginUseCase(supervisorBarcode, operatorBarcode)
+            result.fold(
+                onSuccess = { session ->
+                    scanFeedbackManager.scanSkuComplete()
+                    _uiState.value = LoginUiState.Success(session)
+                },
+                onFailure = { error ->
+                    scanFeedbackManager.scanError()
+                    _uiState.value = LoginUiState.Error(
+                        error.message ?: "Erro ao fazer login."
+                    )
+                    delay(3000)
+                    _uiState.value = LoginUiState.Idle
+                }
+            )
         }
     }
 }

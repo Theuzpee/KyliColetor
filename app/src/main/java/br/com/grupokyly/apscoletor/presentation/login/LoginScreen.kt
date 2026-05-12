@@ -22,6 +22,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.navigation.compose.hiltViewModel
 import br.com.grupokyly.apscoletor.R
 import br.com.grupokyly.apscoletor.presentation.theme.*
@@ -58,6 +64,26 @@ fun LoginScreenContent(
     state: LoginUiState,
     onEvent: (LoginEvent) -> Unit
 ) {
+    var supervisorInput by remember { mutableStateOf("") }
+    var operatorInput by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+
+    // Detectar quando supervisor foi preenchido pelo scanner (Keyboard Wedge)
+    LaunchedEffect(supervisorInput) {
+        if (supervisorInput.endsWith("\n") || supervisorInput.endsWith("\t")) {
+            supervisorInput = supervisorInput.trim()
+            focusManager.moveFocus(FocusDirection.Down)
+        }
+    }
+
+    LaunchedEffect(operatorInput) {
+        if (operatorInput.endsWith("\n") || operatorInput.endsWith("\t")) {
+            operatorInput = operatorInput.trim()
+            if (supervisorInput.isNotBlank() && operatorInput.isNotBlank()) {
+                onEvent(LoginEvent.OnLogin(supervisorInput, operatorInput))
+            }
+        }
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -101,70 +127,95 @@ fun LoginScreenContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // 2. Seção Supervisor
-        val supervisorActive = state is LoginUiState.Idle || state is LoginUiState.Error
-        val supervisorScanned = state is LoginUiState.WaitingOperator || state is LoginUiState.Loading || state is LoginUiState.Success
-        
         Column(modifier = Modifier.fillMaxWidth()) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(text = stringResource(R.string.login_supervisor_label), fontSize = 11.sp, color = TextSecondary)
-                Spacer(modifier = Modifier.width(8.dp))
-                if (supervisorScanned) {
-                    Box(modifier = Modifier.background(PrimaryYellow, RoundedCornerShape(4.dp)).padding(horizontal = 6.dp, vertical = 2.dp)) {
-                        Text(text = stringResource(R.string.shift_1), fontSize = 11.sp, color = Color.Black, fontWeight = FontWeight.Bold) // Mock shift for now
-                    }
-                }
-            }
-            Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
-                value = if (supervisorScanned) "SUP-12345" else "", // Mock
-                onValueChange = {},
-                placeholder = { Text(stringResource(R.string.login_supervisor_hint), fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = TextSecondary) },
-                leadingIcon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = PrimaryYellow) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(if (supervisorActive) 2.dp else 1.dp, if (supervisorActive) PrimaryYellow else TextMuted, RoundedCornerShape(8.dp)),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = BackgroundSecondary,
-                    focusedContainerColor = BackgroundSecondary,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedBorderColor = Color.Transparent,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                    disabledContainerColor = BackgroundSecondary,
-                    disabledTextColor = TextPrimary,
-                    disabledBorderColor = Color.Transparent
+                value = supervisorInput,
+                onValueChange = { supervisorInput = it },
+                label = { Text("SUPERVISOR", color = TextSecondary, fontSize = 11.sp) },
+                placeholder = {
+                    Text(
+                        "Bipe ou digite o código do supervisor",
+                        color = TextSecondary
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.QrCodeScanner,
+                        contentDescription = null,
+                        tint = PrimaryYellow
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Next
                 ),
-                enabled = false // Scanner driven
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryYellow,
+                    unfocusedBorderColor = TextSecondary.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    cursorColor = PrimaryYellow,
+                    focusedContainerColor = BackgroundSecondary,
+                    unfocusedContainerColor = BackgroundSecondary
+                ),
+                shape = RoundedCornerShape(8.dp)
             )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         // 3. Seção Colaborador
-        val operatorActive = state is LoginUiState.WaitingOperator || state is LoginUiState.Loading || state is LoginUiState.Success
-        Column(modifier = Modifier.fillMaxWidth().alpha(if (operatorActive) 1f else 0.4f)) {
-            Text(text = stringResource(R.string.login_operator_label), fontSize = 11.sp, color = TextSecondary)
-            Spacer(modifier = Modifier.height(8.dp))
+        Column(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
-                value = if (state is LoginUiState.Loading || state is LoginUiState.Success) "OP-98765" else "", // Mock
-                onValueChange = {},
-                placeholder = { Text(stringResource(R.string.login_operator_hint), fontFamily = FontFamily.Monospace, fontSize = 14.sp, color = TextSecondary) },
-                leadingIcon = { Icon(Icons.Default.Badge, contentDescription = null, tint = TextSecondary) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .border(if (operatorActive && state !is LoginUiState.Success && state !is LoginUiState.Loading) 2.dp else 1.dp, if (operatorActive) PrimaryYellow else TextMuted, RoundedCornerShape(8.dp)),
-                colors = OutlinedTextFieldDefaults.colors(
-                    unfocusedContainerColor = BackgroundSecondary,
-                    focusedContainerColor = BackgroundSecondary,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedBorderColor = Color.Transparent,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary,
-                    disabledContainerColor = BackgroundSecondary,
-                    disabledTextColor = TextPrimary,
-                    disabledBorderColor = Color.Transparent
+                value = operatorInput,
+                onValueChange = { operatorInput = it },
+                label = { Text("COLABORADOR", color = TextSecondary, fontSize = 11.sp) },
+                placeholder = {
+                    Text(
+                        "Bipe ou digite o código do colaborador",
+                        color = TextSecondary
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Badge,
+                        contentDescription = null,
+                        tint = if (supervisorInput.isNotBlank()) TextPrimary
+                        else TextSecondary.copy(alpha = 0.4f)
+                    )
+                },
+                enabled = supervisorInput.isNotBlank(), // só ativa após supervisor
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Done
                 ),
-                enabled = false // Scanner driven
+                keyboardActions = KeyboardActions(
+                    onDone = {
+                        if (supervisorInput.isNotBlank() && operatorInput.isNotBlank()) {
+                            onEvent(LoginEvent.OnLogin(supervisorInput, operatorInput))
+                        }
+                    }
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PrimaryYellow,
+                    unfocusedBorderColor = TextSecondary.copy(alpha = 0.5f),
+                    focusedTextColor = Color.White,
+                    unfocusedTextColor = Color.White,
+                    disabledBorderColor = TextSecondary.copy(alpha = 0.2f),
+                    disabledTextColor = TextSecondary.copy(alpha = 0.4f),
+                    disabledContainerColor = BackgroundSecondary.copy(alpha = 0.5f),
+                    cursorColor = PrimaryYellow,
+                    focusedContainerColor = BackgroundSecondary,
+                    unfocusedContainerColor = BackgroundSecondary
+                ),
+                shape = RoundedCornerShape(8.dp)
             )
         }
 
@@ -175,21 +226,26 @@ fun LoginScreenContent(
             CircularProgressIndicator(color = PrimaryYellow)
         } else {
             Button(
-                onClick = { /* Not used as it's scanner driven, but can have it for mock purposes if needed */ },
-                enabled = false,
+                onClick = {
+                    onEvent(LoginEvent.OnLogin(supervisorInput, operatorInput))
+                },
+                enabled = supervisorInput.isNotBlank() && operatorInput.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .alpha(0f), // Hide it because scanner driven, but keeping space if needed. Wait, prompt says: "Botão Entrar: Desabilitado até ambos os campos estarem preenchidos"
+                    .height(56.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = PrimaryYellow,
                     contentColor = Color.Black,
-                    disabledContainerColor = BackgroundSecondary,
-                    disabledContentColor = TextMuted
+                    disabledContainerColor = PrimaryYellow.copy(alpha = 0.4f),
+                    disabledContentColor = Color.Black.copy(alpha = 0.4f)
                 )
             ) {
-                Text(stringResource(R.string.login_btn), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(
+                    text = stringResource(R.string.login_btn),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

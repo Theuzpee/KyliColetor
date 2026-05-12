@@ -37,8 +37,34 @@ open class RemoteDataSource @Inject constructor(
             Result.failure(Exception("Erro desconhecido: ${e.message}"))
         }
     }
+    open suspend fun getBoxFull(papeletaCode: String): Result<SyncBoxRequestDto> {
+        return try {
+            val response = api.getBoxFull(papeletaCode)
+            if (response.isSuccessful) {
+                val body = response.body()
+                if (body != null) {
+                    Result.success(body)
+                } else {
+                    Result.failure(Exception("Caixa vazia na resposta do servidor."))
+                }
+            } else {
+                if (response.code() == 404) {
+                    Result.failure(NotFoundException("Caixa não encontrada no servidor."))
+                } else {
+                    Result.failure(Exception("Erro ao baixar caixa: ${response.code()}"))
+                }
+            }
+        } catch (e: IOException) {
+            Result.failure(NetworkException("Sem conexão de rede ou servidor inacessível."))
+        } catch (e: HttpException) {
+            Result.failure(Exception("Erro HTTP: ${e.code()} - ${e.message()}"))
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro desconhecido: ${e.message}"))
+        }
+    }
 }
 
+class NotFoundException(message: String) : Exception(message)
 class NetworkException(message: String) : Exception(message)
 class ConflictException(message: String) : Exception(message)
 class ServerException(message: String) : Exception(message)

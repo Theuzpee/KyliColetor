@@ -19,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import br.com.grupokyly.apscoletor.R
 import br.com.grupokyly.apscoletor.presentation.theme.ApsColetorTheme
-import br.com.grupokyly.apscoletor.presentation.theme.TextGray
+import br.com.grupokyly.apscoletor.presentation.theme.TextSecondary
 
 @Composable
 fun IdleContent() {
@@ -44,7 +44,7 @@ fun IdleContent() {
         Text(
             text = stringResource(R.string.idle_operator),
             style = MaterialTheme.typography.bodyLarge,
-            color = TextGray
+            color = TextSecondary
         )
     }
 }

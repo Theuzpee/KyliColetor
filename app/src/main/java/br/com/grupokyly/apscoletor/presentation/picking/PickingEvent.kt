@@ -14,4 +14,5 @@ sealed class PickingEvent {
     data class OnUnregisterHardware(val context: Context) : PickingEvent()
     data class OnSkipItem(val reason: SkipReason) : PickingEvent()
     data class OnRegisterDivergence(val barcode: String?, val reason: SkipReason) : PickingEvent()
+    data class OnDebugScan(val barcode: String) : PickingEvent()
 }

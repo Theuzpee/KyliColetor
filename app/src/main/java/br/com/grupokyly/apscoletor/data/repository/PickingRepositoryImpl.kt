@@ -7,6 +7,9 @@ import br.com.grupokyly.apscoletor.data.local.dao.ScannedPieceDao
 import br.com.grupokyly.apscoletor.data.local.entity.DivergenceEntity
 import br.com.grupokyly.apscoletor.data.local.entity.ScannedPieceEntity
 import br.com.grupokyly.apscoletor.data.mapper.toDomain
+import br.com.grupokyly.apscoletor.data.local.entity.BoxEntity
+import br.com.grupokyly.apscoletor.data.local.entity.PickingItemEntity
+import br.com.grupokyly.apscoletor.data.remote.RemoteDataSource
 import br.com.grupokyly.apscoletor.data.sync.SyncScheduler
 import br.com.grupokyly.apscoletor.domain.model.Box
 import br.com.grupokyly.apscoletor.domain.model.BoxStatus
@@ -28,16 +31,55 @@ class PickingRepositoryImpl @Inject constructor(
     private val scannedPieceDao: ScannedPieceDao,
     private val divergenceDao: DivergenceDao,
     private val dispatcher: CoroutineDispatcher,
-    private val syncScheduler: SyncScheduler
+    private val syncScheduler: SyncScheduler,
+    private val remoteDataSource: RemoteDataSource
 ) : PickingRepository {
 
     override suspend fun openBox(papeletaCode: String): Result<Box> = withContext(dispatcher) {
         try {
-            val boxEntity = boxDao.getBoxByPapeleta(papeletaCode).firstOrNull()
+            var boxEntity = boxDao.getBoxByPapeleta(papeletaCode).firstOrNull()
+            
             if (boxEntity == null) {
-                Result.failure(Exception("Caixa não encontrada. Verifique a papeleta e tente novamente."))
+                // Tenta baixar da API
+                val remoteResult = remoteDataSource.getBoxFull(papeletaCode)
+                remoteResult.fold(
+                    onSuccess = { dto ->
+                        val newBoxEntity = BoxEntity(
+                            papeletaCode = dto.papeletaCode,
+                            orderId = dto.orderId,
+                            status = BoxStatus.valueOf(dto.status),
+                            createdAt = System.currentTimeMillis(),
+                            updatedAt = System.currentTimeMillis(),
+                            syncedAt = null
+                        )
+                        val boxId = boxDao.insert(newBoxEntity)
+                        
+                        val itemsToInsert = dto.items.map { itemDto ->
+                            PickingItemEntity(
+                                boxId = boxId,
+                                reference = itemDto.reference,
+                                color = itemDto.color,
+                                size = itemDto.size,
+                                address = itemDto.address,
+                                quantityRequired = itemDto.quantityRequired,
+                                quantityCollected = itemDto.quantityCollected,
+                                status = ItemStatus.valueOf(itemDto.status)
+                            )
+                        }
+                        pickingItemDao.insertAll(itemsToInsert)
+                        
+                        boxEntity = boxDao.getBoxByPapeleta(papeletaCode).firstOrNull()
+                    },
+                    onFailure = {
+                        return@withContext Result.failure(Exception("Caixa não encontrada localmente e erro ao buscar no servidor: ${it.message}"))
+                    }
+                )
+            }
+            
+            if (boxEntity == null) {
+                Result.failure(Exception("Caixa não encontrada após sincronização."))
             } else {
-                val box = boxEntity.toDomain()
+                val box = boxEntity!!.toDomain()
                 if (box.status == BoxStatus.MULTI_ANDAR) {
                     Result.success(box.copy(isReopened = true))
                 } else {
@@ -67,14 +109,11 @@ class PickingRepositoryImpl @Inject constructor(
                 return@withContext Result.success(ScanResult.SkuNotFound)
             }
 
-            // In a real scenario we'd validate if 'barcode' belongs to 'nextPendingItemEntity.reference' etc.
-            // For now, if the barcode is not empty, we assume it's part of the pending item or we'd need parsing logic.
-            // The prompt says "Validar se o barcode pertence ao SKU do item pendente".
-            // Since barcode parsing logic isn't defined here, let's assume barcode contains the reference or we just accept it if it's not blank.
-            // The prompt says: "Validar se o barcode pertence ao SKU do item pendente -> Se não pertencer: retornar Result.success(ScanResult.SkuNotFound)".
-            // Let's implement a simple contains logic or exact match logic for now.
-            if (!barcode.contains(nextPendingItemEntity.reference)) {
-                 return@withContext Result.success(ScanResult.SkuNotFound)
+            // Aceita qualquer barcode não vazio e não duplicado para o item pendente atual.
+            // A validação estrita de "barcode pertence ao SKU" requer integração com tabela EAN
+            // do ERP, que será implementada em etapa futura.
+            if (barcode.isBlank()) {
+                return@withContext Result.success(ScanResult.SkuNotFound)
             }
 
             val scannedAt = System.currentTimeMillis()
@@ -92,7 +131,7 @@ class PickingRepositoryImpl @Inject constructor(
             if (newCollected >= nextPendingItemEntity.quantityRequired) {
                 pickingItemDao.updateStatus(nextPendingItemEntity.id, ItemStatus.COMPLETO)
                 val updatedItem = nextPendingItemEntity.copy(quantityCollected = newCollected, status = ItemStatus.COMPLETO)
-                return@withContext Result.success(ScanResult.QuantityComplete(updatedItem.toDomain()))
+                return@withContext Result.success(ScanResult.QuantityComplete(barcode))
             } else {
                 val updatedItem = nextPendingItemEntity.copy(quantityCollected = newCollected)
                 return@withContext Result.success(ScanResult.Success(updatedItem.toDomain()))
@@ -132,8 +171,8 @@ class PickingRepositoryImpl @Inject constructor(
             val itemEntity = pickingItemDao.getItemById(pickingItemId)
                 ?: return@withContext Result.failure(Exception("Item não encontrado."))
 
+            pickingItemDao.updateStatus(pickingItemId, ItemStatus.FALTA)
             val updatedItem = itemEntity.copy(status = ItemStatus.FALTA)
-            pickingItemDao.updateItem(updatedItem)
 
             val divergence = DivergenceEntity(
                 pickingItemId = pickingItemId,

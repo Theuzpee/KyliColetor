@@ -24,4 +24,10 @@ interface PickingItemDao {
 
     @Query("SELECT * FROM picking_items WHERE boxId = :boxId AND status = 'PENDENTE' ORDER BY id ASC LIMIT 1")
     suspend fun getNextPendingItem(boxId: Long): PickingItemEntity?
+
+    @Query("SELECT * FROM picking_items WHERE id = :itemId")
+    suspend fun getItemById(itemId: Long): PickingItemEntity?
+
+    @Query("SELECT * FROM picking_items WHERE boxId = :boxId")
+    suspend fun getItemsByBoxId(boxId: Long): List<PickingItemEntity>
 }

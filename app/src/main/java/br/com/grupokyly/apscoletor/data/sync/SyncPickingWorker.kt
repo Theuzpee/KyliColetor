@@ -35,9 +35,7 @@ class SyncPickingWorker @AssistedInject constructor(
         try {
             // Busca caixas não sincronizadas (syncedAt == null) ordenadas por status.
             // Para simplicidade, assumindo que getPendingBoxes() ou similar retorna lista.
-            // Vamos implementar uma busca manual via getAllBoxes (o que pode ser otimizado futuramente com uma query específica)
-            val allBoxes = boxDao.getAllBoxes().first()
-            val pendingBoxes = allBoxes.filter { it.syncedAt == null && it.status != BoxStatus.EM_COLETA }
+            val pendingBoxes = boxDao.getPendingSync()
                 .sortedBy { if (it.status == BoxStatus.FINALIZADA) 0 else 1 } // FINALIZADA primeiro
 
             if (pendingBoxes.isEmpty()) {
@@ -46,14 +44,14 @@ class SyncPickingWorker @AssistedInject constructor(
 
             for (boxEntity in pendingBoxes) {
                 val box = boxEntity.toDomain()
-                val items = itemDao.getItemsForBox(box.id).first().map { it.toDomain() }
+                val items = itemDao.getItemsByBoxId(box.id).map { it.toDomain() }
                 
                 val piecesByItem = mutableMapOf<Long, List<br.com.grupokyly.apscoletor.domain.model.ScannedPiece>>()
                 val divergencesByItem = mutableMapOf<Long, List<br.com.grupokyly.apscoletor.domain.model.Divergence>>()
                 val boxDivergences = divergenceDao.getByBox(box.id).first().map { it.toDomain() }
 
                 for (item in items) {
-                    val pieces = pieceDao.getPiecesForItem(item.id).first().map { it.toDomain() }
+                    val pieces = pieceDao.getByPickingItem(item.id).map { it.toDomain() }
                     piecesByItem[item.id] = pieces
                     divergencesByItem[item.id] = boxDivergences.filter { it.pickingItemId == item.id }
                 }
@@ -64,13 +62,13 @@ class SyncPickingWorker @AssistedInject constructor(
                 
                 result.fold(
                     onSuccess = { response ->
-                        boxDao.insertBox(boxEntity.copy(syncedAt = System.currentTimeMillis()))
+                        boxDao.updateSyncedAt(box.id, System.currentTimeMillis())
                     },
                     onFailure = { error ->
                         when (error) {
                             is ConflictException -> {
                                 // Idempotência: já sincronizada no backend
-                                boxDao.insertBox(boxEntity.copy(syncedAt = System.currentTimeMillis()))
+                                boxDao.updateSyncedAt(box.id, System.currentTimeMillis())
                             }
                             is NetworkException -> {
                                 // Falha de rede: tentar novamente mais tarde

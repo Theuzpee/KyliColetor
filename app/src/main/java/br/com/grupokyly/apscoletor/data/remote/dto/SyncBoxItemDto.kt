@@ -8,5 +8,6 @@ data class SyncBoxItemDto(
     val quantityRequired: Int,
     val quantityCollected: Int,
     val status: String,
-    val scannedPieces: List<ScannedPieceDto>
+    val scannedPieces: List<ScannedPieceDto>,
+    val divergences: List<DivergenceDto> = emptyList()
 )

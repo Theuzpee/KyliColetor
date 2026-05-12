@@ -13,17 +13,25 @@ import br.com.grupokyly.apscoletor.presentation.navigation.ApsColetorNavGraph
 import br.com.grupokyly.apscoletor.presentation.theme.ApsColetorTheme
 import dagger.hilt.android.AndroidEntryPoint
 
+import br.com.grupokyly.apscoletor.domain.usecase.CheckSessionUseCase
+import javax.inject.Inject
+
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    
+    @Inject
+    lateinit var checkSessionUseCase: CheckSessionUseCase
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
         setContent {
             ApsColetorTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    ApsColetorNavGraph()
+                    ApsColetorNavGraph(checkSessionUseCase)
                 }
             }
         }

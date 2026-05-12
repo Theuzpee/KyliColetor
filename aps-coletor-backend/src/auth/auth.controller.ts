@@ -40,6 +40,12 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Dados do token extraídos' })
   @ApiResponse({ status: 401, description: 'Token inválido/expirado' })
   getProfile(@Request() req: any) {
-    return req.user;
+    return {
+      operatorCode: req.user.operatorCode,
+      operatorName: req.user.operatorName,
+      supervisorCode: req.user.supervisorCode,
+      supervisorName: req.user.supervisorName,
+      shift: req.user.shift,
+    };
   }
 }

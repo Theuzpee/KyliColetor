@@ -2,6 +2,7 @@ package br.com.grupokyly.apscoletor.di
 
 import br.com.grupokyly.apscoletor.BuildConfig
 import br.com.grupokyly.apscoletor.data.remote.api.PickingApiService
+import br.com.grupokyly.apscoletor.data.remote.api.AuthApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,6 +13,9 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
+import br.com.grupokyly.apscoletor.data.local.SessionManager
+import kotlinx.coroutines.runBlocking
+import okhttp3.Interceptor
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -19,7 +23,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(): OkHttpClient {
+    fun provideOkHttpClient(sessionManager: SessionManager): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
@@ -28,7 +32,17 @@ object NetworkModule {
             }
         }
 
+        val authInterceptor = Interceptor { chain ->
+            val token = runBlocking { sessionManager.getToken() }
+            val requestBuilder = chain.request().newBuilder()
+            if (token != null) {
+                requestBuilder.addHeader("Authorization", "Bearer $token")
+            }
+            chain.proceed(requestBuilder.build())
+        }
+
         return OkHttpClient.Builder()
+            .addInterceptor(authInterceptor)
             .addInterceptor(loggingInterceptor)
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
@@ -50,5 +64,11 @@ object NetworkModule {
     @Singleton
     fun providePickingApiService(retrofit: Retrofit): PickingApiService {
         return retrofit.create(PickingApiService::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuthApiService(retrofit: Retrofit): AuthApiService {
+        return retrofit.create(AuthApiService::class.java)
     }
 }

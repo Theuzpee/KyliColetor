@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Box } from './entities/box.entity';
@@ -92,6 +92,47 @@ export class PickingService {
     }
 
     return { exists: true, syncId: existingBox.id };
+  }
+
+  async getBox(papeletaCode: string) {
+    const box = await this.boxRepository.findOne({
+      where: { papeletaCode },
+      relations: ['items', 'items.scannedPieces', 'divergences'],
+    });
+
+    if (!box) {
+      throw new NotFoundException('Caixa não encontrada');
+    }
+
+    // Mapear para o formato exato do SyncBoxRequestDto que o Android espera
+    return {
+      papeletaCode: box.papeletaCode,
+      orderId: box.orderId,
+      status: box.status,
+      collectedAt: box.collectedAt,
+      items: box.items.map(item => {
+        // Encontrar divergências deste item específico
+        const itemDivergences = box.divergences.filter(d => d.pickingItemId === item.reference);
+        return {
+          reference: item.reference,
+          color: item.color,
+          size: item.size,
+          address: item.address,
+          quantityRequired: item.quantityRequired,
+          quantityCollected: item.quantityCollected,
+          status: item.status,
+          scannedPieces: item.scannedPieces.map(piece => ({
+            barcode: piece.barcode,
+            scannedAt: piece.scannedAt
+          })),
+          divergences: itemDivergences.map(div => ({
+            reason: div.reason,
+            barcode: div.barcode,
+            registeredAt: div.registeredAt
+          }))
+        };
+      })
+    };
   }
 
   async getDivergences(filters: { date?: string; reason?: string; boxId?: string }) {

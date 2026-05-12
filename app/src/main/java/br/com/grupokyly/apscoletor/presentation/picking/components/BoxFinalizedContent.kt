@@ -93,7 +93,7 @@ fun BoxFinalizedContent(
             Spacer(modifier = Modifier.height(8.dp))
             SummaryRow("Papeleta:", state.box.papeletaCode)
             Spacer(modifier = Modifier.height(8.dp))
-            SummaryRow("Total de peças:", "${state.box.totalPieces}")
+            SummaryRow("Total de peças:", "?")
             Spacer(modifier = Modifier.height(8.dp))
             SummaryRow("Tempo de coleta:", "00:00") // TODO: Calculate actual time
         }

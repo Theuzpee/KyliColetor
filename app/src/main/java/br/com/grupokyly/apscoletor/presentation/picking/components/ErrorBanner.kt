@@ -19,7 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.grupokyly.apscoletor.presentation.theme.ApsColetorTheme
 import br.com.grupokyly.apscoletor.presentation.theme.ErrorRed
-import br.com.grupokyly.apscoletor.presentation.theme.TextWhite
+import androidx.compose.ui.graphics.Color
 
 @Composable
 fun ErrorBanner(message: String) {
@@ -34,13 +34,13 @@ fun ErrorBanner(message: String) {
         Icon(
             imageVector = Icons.Default.Close,
             contentDescription = "Erro",
-            tint = TextWhite
+            tint = Color.White
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = message,
             style = MaterialTheme.typography.bodyLarge,
-            color = TextWhite
+            color = Color.White
         )
     }
 }

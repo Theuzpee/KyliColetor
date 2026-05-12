@@ -33,6 +33,14 @@ export class PickingController {
     return result;
   }
 
+  @Get('boxes/:papeletaCode/full')
+  @ApiOperation({ summary: 'Baixar dados completos de uma caixa para iniciar a coleta' })
+  @ApiResponse({ status: 200, description: 'Dados da caixa' })
+  @ApiResponse({ status: 404, description: 'Caixa não encontrada' })
+  async getBox(@Param('papeletaCode') papeletaCode: string) {
+    return this.pickingService.getBox(papeletaCode);
+  }
+
   @Get('divergences/summary')
   @ApiOperation({ summary: 'Resumo gerencial de divergências por motivo' })
   @ApiResponse({ status: 200, description: 'Resumo gerencial retornado com sucesso' })

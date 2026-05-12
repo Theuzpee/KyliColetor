@@ -15,4 +15,7 @@ interface PickingApiService {
 
     @GET("api/picking/boxes/{papeletaCode}")
     suspend fun checkBoxExists(@Path("papeletaCode") papeletaCode: String): Response<Map<String, Boolean>>
+
+    @GET("api/picking/boxes/{papeletaCode}/full")
+    suspend fun getBoxFull(@Path("papeletaCode") papeletaCode: String): Response<SyncBoxRequestDto>
 }

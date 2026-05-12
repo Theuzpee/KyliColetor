@@ -3,6 +3,7 @@ package br.com.grupokyly.apscoletor.data.local
 import androidx.room.TypeConverter
 import br.com.grupokyly.apscoletor.domain.model.BoxStatus
 import br.com.grupokyly.apscoletor.domain.model.ItemStatus
+import br.com.grupokyly.apscoletor.domain.model.SkipReason
 
 class Converters {
 
@@ -35,12 +36,9 @@ class Converters {
     }
 
     @TypeConverter
-    fun fromSkipReason(value: SkipReason): String {
-        return value.name
-    }
+    fun fromSkipReason(value: SkipReason?): String? = value?.name
 
     @TypeConverter
-    fun toSkipReason(value: String): SkipReason {
-        return SkipReason.valueOf(value)
-    }
+    fun toSkipReason(value: String?): SkipReason? =
+        value?.let { SkipReason.valueOf(it) }
 }

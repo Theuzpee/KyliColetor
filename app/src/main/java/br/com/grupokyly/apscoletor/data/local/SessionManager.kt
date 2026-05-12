@@ -6,6 +6,7 @@ import br.com.grupokyly.apscoletor.data.remote.dto.LoginResponseDto
 import br.com.grupokyly.apscoletor.domain.model.UserSession
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.firstOrNull
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -66,12 +67,12 @@ class SessionManager @Inject constructor(
     }
 
     suspend fun getToken(): String? {
-        val session = kotlinx.coroutines.flow.firstOrNull(sessionFlow)
+        val session = sessionFlow.firstOrNull()
         return session?.token
     }
 
     suspend fun isSessionValid(): Boolean {
-        val session = kotlinx.coroutines.flow.firstOrNull(sessionFlow)
+        val session = sessionFlow.firstOrNull()
         return session != null
     }
 }

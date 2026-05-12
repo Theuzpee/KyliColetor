@@ -41,10 +41,6 @@ export class AuthService {
       throw new UnauthorizedException('Colaborador inativo. Contate o RH.');
     }
 
-    const now = Math.floor(Date.now() / 1000);
-    // JWT Expiration set to 8h
-    const exp = now + 8 * 60 * 60;
-
     const payload = {
       sub: operator.id,
       operatorCode: operator.employeeCode,
@@ -52,11 +48,13 @@ export class AuthService {
       supervisorCode: supervisor.barcode,
       supervisorName: supervisor.name,
       shift: supervisor.shift,
-      iat: now,
-      exp: exp,
     };
 
     const token = this.jwtService.sign(payload);
+
+    const expiresAt = new Date(
+      Date.now() + 8 * 60 * 60 * 1000
+    ).toISOString();
 
     return {
       token,
@@ -64,7 +62,7 @@ export class AuthService {
       operatorCode: operator.employeeCode,
       supervisorName: supervisor.name,
       shift: supervisor.shift,
-      expiresAt: new Date(exp * 1000).toISOString(),
+      expiresAt,
     };
   }
 

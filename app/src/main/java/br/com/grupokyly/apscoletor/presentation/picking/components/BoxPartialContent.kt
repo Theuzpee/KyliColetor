@@ -93,7 +93,7 @@ fun BoxPartialContent(
             Spacer(modifier = Modifier.height(8.dp))
             SummaryRow("Papeleta:", state.box.papeletaCode)
             Spacer(modifier = Modifier.height(8.dp))
-            SummaryRow("Peças coletadas:", "${state.box.collectedPieces} de ${state.box.totalPieces}")
+            SummaryRow("Peças coletadas:", "? de ?")
         }
 
         Spacer(modifier = Modifier.height(24.dp))

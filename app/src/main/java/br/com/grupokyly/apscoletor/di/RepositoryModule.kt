@@ -1,7 +1,9 @@
 package br.com.grupokyly.apscoletor.di
 
 import br.com.grupokyly.apscoletor.data.repository.PickingRepositoryImpl
+import br.com.grupokyly.apscoletor.data.repository.AuthRepositoryImpl
 import br.com.grupokyly.apscoletor.domain.repository.PickingRepository
+import br.com.grupokyly.apscoletor.domain.repository.AuthRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -17,4 +19,10 @@ abstract class RepositoryModule {
     abstract fun bindPickingRepository(
         pickingRepositoryImpl: PickingRepositoryImpl
     ): PickingRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        impl: AuthRepositoryImpl
+    ): AuthRepository
 }

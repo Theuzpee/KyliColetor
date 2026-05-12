@@ -70,7 +70,7 @@ fun Box.toSyncRequestDto(
         papeletaCode = papeletaCode,
         orderId = orderId,
         status = status.name,
-        collectedAt = updatedAt,
+        collectedAt = java.time.Instant.ofEpochMilli(updatedAt).toString(),
         items = items.map { item ->
             SyncBoxItemDto(
                 reference = item.reference,
@@ -83,14 +83,14 @@ fun Box.toSyncRequestDto(
                 scannedPieces = piecesByItem[item.id]?.map { piece ->
                     ScannedPieceDto(
                         barcode = piece.barcode,
-                        scannedAt = piece.scannedAt
+                        scannedAt = java.time.Instant.ofEpochMilli(piece.scannedAt).toString()
                     )
                 } ?: emptyList(),
                 divergences = divergencesByItem[item.id]?.map { div ->
                     DivergenceDto(
                         reason = div.reason.name,
                         barcode = div.barcode,
-                        registeredAt = div.registeredAt
+                        registeredAt = java.time.Instant.ofEpochMilli(div.registeredAt).toString()
                     )
                 } ?: emptyList()
             )

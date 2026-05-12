@@ -6,6 +6,7 @@ import br.com.grupokyly.apscoletor.data.local.ApsColetorDatabase
 import br.com.grupokyly.apscoletor.data.local.dao.BoxDao
 import br.com.grupokyly.apscoletor.data.local.dao.PickingItemDao
 import br.com.grupokyly.apscoletor.data.local.dao.ScannedPieceDao
+import br.com.grupokyly.apscoletor.data.local.dao.DivergenceDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -14,10 +15,19 @@ import dagger.hilt.components.SingletonComponent
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import javax.inject.Singleton
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
+
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "aps_session")
 
 @Module
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
+
+    @Provides
+    @Singleton
+    fun provideDataStore(@ApplicationContext context: Context): DataStore<Preferences> = context.dataStore
 
     @Provides
     @Singleton
@@ -37,6 +47,9 @@ object DatabaseModule {
 
     @Provides
     fun provideScannedPieceDao(database: ApsColetorDatabase): ScannedPieceDao = database.scannedPieceDao()
+
+    @Provides
+    fun provideDivergenceDao(database: ApsColetorDatabase): DivergenceDao = database.divergenceDao()
 
     @Provides
     fun provideIoDispatcher(): CoroutineDispatcher = Dispatchers.IO

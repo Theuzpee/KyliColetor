@@ -16,7 +16,7 @@ import br.com.grupokyly.apscoletor.domain.usecase.SaveMultiFloorBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.SkipPickingItemUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.RegisterDivergenceUseCase
 import br.com.grupokyly.apscoletor.domain.validator.AddressValidator
-import br.com.grupokyly.apscoletor.hardware.DataWedgeReceiver
+import br.com.grupokyly.apscoletor.hardware.ScannerReceiver
 import br.com.grupokyly.apscoletor.hardware.ScanFeedbackManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +24,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import br.com.grupokyly.apscoletor.util.Clock
@@ -40,7 +41,7 @@ class PickingViewModel @Inject constructor(
     private val registerDivergenceUseCase: RegisterDivergenceUseCase,
     private val getBoxItemsUseCase: GetBoxItemsUseCase,
     private val addressValidator: AddressValidator,
-    private val dataWedgeReceiver: DataWedgeReceiver,
+    private val scannerReceiver: ScannerReceiver,
     private val scanFeedbackManager: ScanFeedbackManager,
     private val clock: Clock
 ) : ViewModel() {
@@ -64,7 +65,7 @@ class PickingViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            dataWedgeReceiver.scannedDataFlow.collect { barcode ->
+            scannerReceiver.scannedDataFlow.collect { barcode ->
                 val currentState = _uiState.value
                 when (currentState) {
                     is PickingUiState.Idle, is PickingUiState.Error -> {
@@ -108,10 +109,31 @@ class PickingViewModel @Inject constructor(
             is PickingEvent.OnFinalizeBox -> handleFinalizeBox()
             is PickingEvent.OnSavePartial -> handleSavePartialBox()
             is PickingEvent.OnSaveMultiFloor -> handleSaveMultiFloor()
-            is PickingEvent.OnRegisterHardware -> dataWedgeReceiver.register(event.context)
-            is PickingEvent.OnUnregisterHardware -> dataWedgeReceiver.unregister(event.context)
+            is PickingEvent.OnRegisterHardware -> scannerReceiver.register(event.context)
+            is PickingEvent.OnUnregisterHardware -> scannerReceiver.unregister(event.context)
             is PickingEvent.OnSkipItem -> handleSkipItem(event.reason)
             is PickingEvent.OnRegisterDivergence -> handleRegisterDivergence(event.barcode, event.reason)
+            is PickingEvent.OnDebugScan -> handleDebugScan(event.barcode)
+        }
+    }
+
+    private fun handleDebugScan(barcode: String) {
+        val currentState = _uiState.value
+        when (currentState) {
+            is PickingUiState.Idle, is PickingUiState.Error -> {
+                if (currentState is PickingUiState.Idle || 
+                    (currentState is PickingUiState.Error && currentState.message.contains("papeleta", ignoreCase = true))) {
+                    onEvent(PickingEvent.OnPapeletaScanned(barcode))
+                }
+            }
+            is PickingUiState.Collecting -> {
+                if (currentState.addressConfirmation == br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending) {
+                    onEvent(PickingEvent.OnAddressScan(barcode))
+                } else if (currentState.addressConfirmation == br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Confirmed) {
+                    onEvent(PickingEvent.OnPieceScan(barcode))
+                }
+            }
+            else -> {}
         }
     }
 
@@ -211,12 +233,12 @@ class PickingViewModel @Inject constructor(
                             
                             _uiState.value = PickingUiState.ItemComplete(
                                 box = currentState.box,
-                                completedItem = result.item,
+                                completedItem = currentState.currentItem,
                                 nextItem = null // Simplificando
                             )
                             delay(1500)
                             
-                            val items = kotlinx.coroutines.flow.firstOrNull { getBoxItemsUseCase(currentState.box.id) } ?: emptyList()
+                            val items = getBoxItemsUseCase(currentState.box.id).firstOrNull() ?: emptyList()
                             val nextPending = items.firstOrNull { it.status == ItemStatus.PENDENTE }
                             
                             if (nextPending != null) {
@@ -246,6 +268,9 @@ class PickingViewModel @Inject constructor(
                             _uiState.value = PickingUiState.Error("Peça não pertence a este endereço.")
                             delay(2000)
                             _uiState.value = currentState // Volta para Collecting sem perder estado
+                        }
+                        is ScanResult.ItemSkipped -> {
+                            // Normalmente não retornado pelo registerScanUseCase
                         }
                     }
                 },
@@ -317,7 +342,7 @@ class PickingViewModel @Inject constructor(
                 onSuccess = { box ->
                     scanFeedbackManager.boxPartial()
                     
-                    val items = kotlinx.coroutines.flow.firstOrNull { getBoxItemsUseCase(box.id) } ?: emptyList()
+                    val items = getBoxItemsUseCase(box.id).firstOrNull() ?: emptyList()
                     val totalPending = items.count { it.status == ItemStatus.PENDENTE || it.status == ItemStatus.FALTA }
                     
                     _uiState.value = PickingUiState.BoxMultiFloor(
@@ -354,7 +379,7 @@ class PickingViewModel @Inject constructor(
                     delay(1500)
                     
                     // Avançar para próximo pendente
-                    val items = kotlinx.coroutines.flow.firstOrNull { getBoxItemsUseCase(currentState.box.id) } ?: emptyList()
+                    val items = getBoxItemsUseCase(currentState.box.id).firstOrNull() ?: emptyList()
                     val nextPending = items.firstOrNull { it.status == ItemStatus.PENDENTE }
                     
                     if (nextPending != null) {

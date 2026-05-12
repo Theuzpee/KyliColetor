@@ -1,6 +1,8 @@
 package br.com.grupokyly.apscoletor.hardware
 
 import android.content.Context
+import android.content.Intent
+import android.util.Log
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.os.Build
@@ -34,10 +36,9 @@ class ScanFeedbackManager @Inject constructor(
      * LED verde + 1 bipe simples (peça OK, SKU ainda não completa)
      */
     fun scanPartialSuccess() {
+        triggerGoodReadLed(success = true)
         playBeep(ToneGenerator.TONE_PROP_BEEP, 100)
         vibrate(longArrayOf(0, 100))
-        // Nota: Controle do LED verde físico geralmente depende de intent específica da fabricante
-        // ou de API dedicada. O bipe e vibração são o feedback primário.
     }
 
     /**
@@ -52,6 +53,7 @@ class ScanFeedbackManager @Inject constructor(
      * LED vermelho + bipe contínuo 2 segundos (SKU errada ou peça sem saldo)
      */
     fun scanError() {
+        triggerGoodReadLed(success = false)
         playBeep(ToneGenerator.TONE_SUP_ERROR, 2000)
         vibrate(longArrayOf(0, 500, 100, 500, 100, 500))
     }
@@ -70,6 +72,20 @@ class ScanFeedbackManager @Inject constructor(
     fun boxPartial() {
         playBeep(ToneGenerator.TONE_CDMA_NETWORK_USA_RINGBACK, 400)
         vibrate(longArrayOf(0, 200, 200, 200))
+    }
+
+    private fun triggerGoodReadLed(success: Boolean) {
+        // Datalogic Good Read LED via Intent
+        try {
+            val intent = Intent("com.datalogic.decode.action.GOOD_READ_OVERRIDE").apply {
+                putExtra("LED_COLOR", if (success) "GREEN" else "RED")
+                putExtra("LED_DURATION_MS", if (success) 200 else 500)
+            }
+            context.sendBroadcast(intent)
+        } catch (e: Exception) {
+            Log.d("ScanFeedbackManager", "LED Intent não suportado: ${e.message}")
+            // Falha silenciosa — o beep já é o feedback primário
+        }
     }
 
     private fun playBeep(toneType: Int, durationMs: Int) {

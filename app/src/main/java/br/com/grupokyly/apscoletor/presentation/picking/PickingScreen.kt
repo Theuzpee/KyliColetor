@@ -5,11 +5,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.collectAsState
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxFinalizedContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxPartialContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxMultiFloorContent
@@ -20,12 +21,13 @@ import br.com.grupokyly.apscoletor.presentation.picking.components.ItemCompleteC
 import br.com.grupokyly.apscoletor.presentation.picking.components.LoadingContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.ItemSkippedContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.SkipItemBottomSheet
+import br.com.grupokyly.apscoletor.presentation.picking.components.DebugScannerComponent
 
 @Composable
 fun PickingScreen(
     viewModel: PickingViewModel = hiltViewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current.applicationContext
     
     // Remember the last collecting state to render beneath the error banner
@@ -96,9 +98,18 @@ fun PickingScreen(
                     viewModel.onEvent(PickingEvent.OnSkipItem(reason))
                 },
                 onRegisterDivergence = { reason ->
+                    showSkipSheet = false
                     viewModel.onEvent(PickingEvent.OnRegisterDivergence(barcode = null, reason = reason))
                 }
             )
         }
+
+        // Overlay do componente de debug no final da tela
+        DebugScannerComponent(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            onDebugScan = { barcode ->
+                viewModel.onEvent(PickingEvent.OnDebugScan(barcode))
+            }
+        )
     }
 }

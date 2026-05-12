@@ -28,6 +28,14 @@ import br.com.grupokyly.apscoletor.presentation.theme.*
 
 import br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState
 
+data class AddressVisuals(
+    val bgColor: Color,
+    val borderColor: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val message: String,
+    val iconTint: Color
+)
+
 @Composable
 fun CollectingContent(
     state: PickingUiState.Collecting,
@@ -35,7 +43,6 @@ fun CollectingContent(
     onSavePartial: () -> Unit,
     onSaveMultiFloor: () -> Unit,
     onSkipRequest: () -> Unit
-) {
 ) {
     // Fake progress calculation
     val progress = if (state.currentItem.quantityRequired > 0) {
@@ -162,23 +169,49 @@ fun CollectingContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         // 4. Campo de confirmação de endereço
-        val (bgColor, borderColor, icon, msg, iconTint) = when (state.addressConfirmation) {
-            AddressConfirmationState.Pending -> listOf(BackgroundSecondary, PrimaryYellow, Icons.Default.LocationOn, stringResource(R.string.address_pending), PrimaryYellow)
-            AddressConfirmationState.Confirmed -> listOf(Color(0xFF1A2A1A), SuccessGreen, Icons.Default.CheckCircle, stringResource(R.string.address_confirmed), SuccessGreen)
-            AddressConfirmationState.Error -> listOf(Color(0xFF2A1A1A), ErrorRed, Icons.Default.Error, stringResource(R.string.address_error), ErrorRed)
+        val addressVisuals = when (state.addressConfirmation) {
+            AddressConfirmationState.Pending -> AddressVisuals(
+                bgColor = BackgroundSecondary,
+                borderColor = PrimaryYellow,
+                icon = Icons.Default.LocationOn,
+                message = stringResource(R.string.address_pending),
+                iconTint = PrimaryYellow
+            )
+            AddressConfirmationState.Confirmed -> AddressVisuals(
+                bgColor = Color(0xFF1A2A1A),
+                borderColor = SuccessGreen,
+                icon = Icons.Default.CheckCircle,
+                message = stringResource(R.string.address_confirmed),
+                iconTint = SuccessGreen
+            )
+            AddressConfirmationState.Error -> AddressVisuals(
+                bgColor = Color(0xFF2A1A1A),
+                borderColor = ErrorRed,
+                icon = Icons.Default.Error,
+                message = stringResource(R.string.address_error),
+                iconTint = ErrorRed
+            )
         }
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(bgColor as Color, RoundedCornerShape(8.dp))
-                .border(2.dp, borderColor as Color, RoundedCornerShape(8.dp))
+                .background(addressVisuals.bgColor, RoundedCornerShape(8.dp))
+                .border(2.dp, addressVisuals.borderColor, RoundedCornerShape(8.dp))
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(imageVector = icon as androidx.compose.ui.graphics.vector.ImageVector, contentDescription = null, tint = iconTint as Color)
+            Icon(
+                imageVector = addressVisuals.icon,
+                contentDescription = null,
+                tint = addressVisuals.iconTint
+            )
             Spacer(modifier = Modifier.width(16.dp))
-            Text(text = msg as String, color = TextPrimary, fontSize = 14.sp)
+            Text(
+                text = addressVisuals.message,
+                color = TextPrimary,
+                fontSize = 14.sp
+            )
         }
         if (state.lastScannedItems.isNotEmpty()) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -285,6 +318,7 @@ fun CollectingContent(
                     Text(stringResource(R.string.btn_finalizar_caixa), fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
+            Spacer(modifier = Modifier.height(80.dp))
         }
     }
 }
