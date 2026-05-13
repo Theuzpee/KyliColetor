@@ -48,11 +48,11 @@ Aplicativo nativo focado em performance, robustez e usabilidade em dispositivos 
 - **Testes:** JUnit, MockK, Turbine e Coroutines Test
 
 ### Principais Features
-- Autenticação e sincronização com ERP
-- Integração nativa/fluida com scanner de hardware
-- Gerenciamento de separação (Picking)
-- Registro de divergências (ex: "Item em Falta")
-- Sistema de sincronização em background quando houver rede
+- Autenticação de múltiplos níveis (Operador e Supervisor em sessão conjunta)
+- **Integração de Hardware (Intent API):** Escuta passiva de gatilhos físicos de coletores industriais (Datalogic, Zebra, etc.) sem uso de campo de texto no Compose
+- **Fluxo de Separação Inteligente:** Validação prévia de endereço lógico vs endereço físico (Bipe de Gôndola)
+- Registro de divergências com foto e UUID local ("Peça Amassada", "Item em Falta", etc.)
+- **Resiliência Offline-First:** Filas de sincronização com *WorkManager*, *Network Health-checks* e Idempotência (tratamento limpo de erro 409 Conflict)
 
 ---
 
