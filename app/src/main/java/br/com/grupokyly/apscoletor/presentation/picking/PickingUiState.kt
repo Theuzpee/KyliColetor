@@ -18,7 +18,8 @@ sealed class PickingUiState {
         val lastScannedItems: List<br.com.grupokyly.apscoletor.domain.model.ScannedPreview> = emptyList(),
         val isMultiFloor: Boolean = false,
         val floorLabel: String = "",
-        val addressConfirmation: br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending
+        val addressConfirmation: br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending,
+        val operatorName: String = "Operador"
     ) : PickingUiState()
     
     data class ItemComplete(
@@ -28,14 +29,27 @@ sealed class PickingUiState {
     ) : PickingUiState()
     
     data class ItemSkipped(
+        val box: Box,
         val skippedItem: PickingItem,
         val reason: SkipReason,
         val nextItem: PickingItem?
     ) : PickingUiState()
     
-    data class BoxFinalized(val box: Box) : PickingUiState()
+    data class BoxFinalized(
+        val box: Box,
+        val collectedItems: List<PickingItem> = emptyList(),
+        val totalCollected: Int = 0,
+        val totalRequired: Int = 0,
+        val collectionTimeMinutes: Int = 0
+    ) : PickingUiState()
     
-    data class BoxPartial(val box: Box) : PickingUiState()
+    data class BoxPartial(
+        val box: Box,
+        val collectedItems: List<PickingItem> = emptyList(),
+        val pendingItems: List<PickingItem> = emptyList(),
+        val totalCollected: Int = 0,
+        val totalRequired: Int = 0
+    ) : PickingUiState()
     
     data class BoxMultiFloor(
         val box: Box,

@@ -12,6 +12,20 @@ import javax.inject.Singleton
 open class RemoteDataSource @Inject constructor(
     private val api: PickingApiService
 ) {
+    open suspend fun checkHealth(): Result<Boolean> {
+        return try {
+            val response = api.checkHealth()
+            if (response.isSuccessful) {
+                Result.success(true)
+            } else {
+                Result.failure(ServerException("Servidor indisponível: ${response.code()}"))
+            }
+        } catch (e: IOException) {
+            Result.failure(NetworkException("Sem rede ou servidor offline."))
+        } catch (e: Exception) {
+            Result.failure(Exception("Erro ao fazer health check: ${e.message}"))
+        }
+    }
     open suspend fun syncBox(request: SyncBoxRequestDto): Result<SyncBoxResponseDto> {
         return try {
             val response = api.syncBox(request)
@@ -24,7 +38,9 @@ open class RemoteDataSource @Inject constructor(
                 }
             } else {
                 if (response.code() == 409) {
-                    Result.failure(ConflictException("Caixa já sincronizada"))
+                    // Idempotência: Caixa já sincronizada. Retornamos sucesso para limpar a fila local.
+                    val fallbackResponse = SyncBoxResponseDto(syncId = "-1", syncedAt = System.currentTimeMillis().toString())
+                    Result.success(fallbackResponse)
                 } else {
                     Result.failure(Exception("Erro na sincronização: ${response.code()}"))
                 }

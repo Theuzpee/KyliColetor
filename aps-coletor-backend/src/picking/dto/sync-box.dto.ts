@@ -29,6 +29,11 @@ export class DivergenceDto {
   @IsDate()
   @Type(() => Date)
   registeredAt: Date;
+
+  @ApiPropertyOptional({ description: 'URL da foto de evidência', example: 'https://storage.../foto.jpg' })
+  @IsOptional()
+  @IsString()
+  evidencePhotoUrl?: string;
 }
 
 export class SyncBoxItemDto {

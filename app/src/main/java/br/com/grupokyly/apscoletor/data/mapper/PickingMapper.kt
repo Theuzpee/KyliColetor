@@ -22,7 +22,8 @@ fun DivergenceEntity.toDomain(): Divergence {
         barcode = this.barcode,
         reason = this.reason,
         registeredAt = this.registeredAt,
-        syncedAt = this.syncedAt
+        syncedAt = this.syncedAt,
+        evidencePhotoUrl = this.evidencePhotoUrl
     )
 }
 
@@ -90,7 +91,8 @@ fun Box.toSyncRequestDto(
                     DivergenceDto(
                         reason = div.reason.name,
                         barcode = div.barcode,
-                        registeredAt = java.time.Instant.ofEpochMilli(div.registeredAt).toString()
+                        registeredAt = java.time.Instant.ofEpochMilli(div.registeredAt).toString(),
+                        evidencePhotoUrl = div.evidencePhotoUrl
                     )
                 } ?: emptyList()
             )

@@ -13,6 +13,9 @@ interface PickingApiService {
     @POST("api/picking/sync-box")
     suspend fun syncBox(@Body request: SyncBoxRequestDto): Response<SyncBoxResponseDto>
 
+    @GET("api/picking/health")
+    suspend fun checkHealth(): Response<Map<String, String>>
+
     @GET("api/picking/boxes/{papeletaCode}")
     suspend fun checkBoxExists(@Path("papeletaCode") papeletaCode: String): Response<Map<String, Boolean>>
 

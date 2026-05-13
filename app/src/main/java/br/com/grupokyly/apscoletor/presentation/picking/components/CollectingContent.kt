@@ -74,7 +74,7 @@ fun CollectingContent(
                 Icon(imageVector = Icons.Default.Wifi, contentDescription = null, tint = SuccessGreen, modifier = Modifier.size(16.dp))
                 Text(text = "Online", color = SuccessGreen, fontSize = 12.sp)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Operador", color = TextSecondary, fontSize = 12.sp)
+                Text(text = state.operatorName, color = TextSecondary, fontSize = 12.sp)
             }
         }
         
@@ -290,9 +290,15 @@ fun CollectingContent(
                         .height(56.dp),
                     shape = RoundedCornerShape(8.dp),
                     border = BorderStroke(1.dp, if (isActionsEnabled) TextSecondary else TextSecondary.copy(alpha = 0.4f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary, disabledContentColor = TextPrimary.copy(alpha = 0.4f))
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary, disabledContentColor = TextPrimary.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(4.dp)
                 ) {
-                    Text(stringResource(R.string.btn_salvar_parcial), fontSize = 14.sp)
+                    Text(
+                        stringResource(R.string.btn_salvar_parcial), 
+                        fontSize = 12.sp, 
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
                 }
                 OutlinedButton(
                     onClick = onSaveMultiFloor,
@@ -302,9 +308,15 @@ fun CollectingContent(
                         .height(56.dp),
                     shape = RoundedCornerShape(8.dp),
                     border = BorderStroke(1.dp, if (isActionsEnabled) PrimaryYellow else PrimaryYellow.copy(alpha = 0.4f)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryYellow, disabledContentColor = PrimaryYellow.copy(alpha = 0.4f))
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = PrimaryYellow, disabledContentColor = PrimaryYellow.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(4.dp)
                 ) {
-                    Text(stringResource(R.string.btn_save_multi_floor), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        stringResource(R.string.btn_save_multi_floor), 
+                        fontSize = 12.sp, 
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
                 }
                 Button(
                     onClick = onFinalize,
@@ -313,9 +325,15 @@ fun CollectingContent(
                         .weight(1f)
                         .height(56.dp),
                     shape = RoundedCornerShape(8.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryYellow, contentColor = Color.Black)
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryYellow, contentColor = Color.Black),
+                    contentPadding = PaddingValues(4.dp)
                 ) {
-                    Text(stringResource(R.string.btn_finalizar_caixa), fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        stringResource(R.string.btn_finalizar_caixa), 
+                        fontSize = 12.sp, 
+                        fontWeight = FontWeight.Bold,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
                 }
             }
             Spacer(modifier = Modifier.height(80.dp))

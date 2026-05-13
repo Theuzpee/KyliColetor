@@ -10,9 +10,10 @@ sealed class PickingEvent {
     object OnFinalizeBox : PickingEvent()
     object OnSavePartial : PickingEvent()
     object OnSaveMultiFloor : PickingEvent()
+    object OnAdvanceToNextItem : PickingEvent()
     data class OnRegisterHardware(val context: Context) : PickingEvent()
     data class OnUnregisterHardware(val context: Context) : PickingEvent()
     data class OnSkipItem(val reason: SkipReason) : PickingEvent()
-    data class OnRegisterDivergence(val barcode: String?, val reason: SkipReason) : PickingEvent()
+    data class OnRegisterDivergence(val barcode: String?, val reason: SkipReason, val evidencePhotoUrl: String?) : PickingEvent()
     data class OnDebugScan(val barcode: String) : PickingEvent()
 }

@@ -37,8 +37,8 @@
 
     <!-- BoxFinalizedContent -->
     <string name="box_finalized_title">Caixa Finalizada!</string>
-    <string name="label_papeleta">Papeleta: %1$s</string>
-    <string name="label_pedido">Pedido: %1$s</string>
+    <string name="label_papeleta">Papeleta</string>
+    <string name="label_pedido">Pedido</string>
     <string name="btn_nova_caixa">Nova Caixa</string>
 
     <!-- BoxPartialContent -->
@@ -89,4 +89,14 @@
     <string name="collecting_multi_floor_banner">Continuando coleta — itens pendentes</string>
     <string name="box_multi_floor_collected">Coletadas neste andar</string>
     <string name="box_multi_floor_pending">Ainda pendentes</string>
+
+    <!-- Labels de resumo -->
+    <string name="label_itens_coletados">Itens Coletados</string>
+    <string name="label_itens_pendentes">Itens Pendentes</string>
+    <string name="label_pecas_coletadas_resumo">Peças coletadas</string>
+    <string name="label_tempo_coleta">Tempo de coleta</string>
+    <string name="label_status">Status</string>
+    <string name="item_coletado">✓ coletado</string>
+    <string name="item_pendente">pendente</string>
+    <string name="label_minutos">%1$d min</string>
 </resources>

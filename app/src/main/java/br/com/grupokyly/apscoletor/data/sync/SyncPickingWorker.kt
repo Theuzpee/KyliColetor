@@ -42,6 +42,21 @@ class SyncPickingWorker @AssistedInject constructor(
                 return@withContext Result.success()
             }
 
+            // Health check em loop: verifica continuamente até a rota estar online e estável
+            while (!isStopped) {
+                val healthCheck = remoteDataSource.checkHealth()
+                if (healthCheck.isSuccess) {
+                    break // Servidor estável, sai do loop e começa o envio
+                }
+                // Servidor offline ou instável: aguarda 10 segundos antes do próximo ping
+                kotlinx.coroutines.delay(10000L)
+            }
+
+            // Se o Android cancelou a tarefa em background antes do servidor voltar, pede para tentar de novo depois
+            if (isStopped) {
+                return@withContext Result.retry()
+            }
+
             for (boxEntity in pendingBoxes) {
                 val box = boxEntity.toDomain()
                 val items = itemDao.getItemsByBoxId(box.id).map { it.toDomain() }

@@ -11,7 +11,7 @@ interface PickingRepository {
     fun getBoxItems(boxId: Long): Flow<List<PickingItem>>
     suspend fun registerScan(barcode: String, boxId: Long): Result<ScanResult>
     suspend fun skipItem(pickingItemId: Long, boxId: Long, reason: SkipReason): Result<ScanResult.ItemSkipped>
-    suspend fun registerDivergence(pickingItemId: Long, boxId: Long, barcode: String?, reason: SkipReason): Result<Unit>
+    suspend fun registerDivergence(pickingItemId: Long, boxId: Long, barcode: String?, reason: SkipReason, evidencePhotoUrl: String? = null): Result<Unit>
     suspend fun finalizeBox(boxId: Long): Result<Box>
     suspend fun savePartialBox(boxId: Long): Result<Box>
     suspend fun saveMultiFloorBox(boxId: Long): Result<Box>

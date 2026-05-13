@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Box } from './entities/box.entity';
@@ -66,6 +70,7 @@ export class PickingService {
           div.reason = divDto.reason;
           div.barcode = divDto.barcode || null;
           div.registeredAt = divDto.registeredAt;
+          div.evidencePhotoUrl = divDto.evidencePhotoUrl || null;
           div.pickingItemId = itemDto.reference; // Usamos reference como fallback na falta do ID UUID
           divergences.push(div);
         });
@@ -110,9 +115,11 @@ export class PickingService {
       orderId: box.orderId,
       status: box.status,
       collectedAt: box.collectedAt,
-      items: box.items.map(item => {
+      items: box.items.map((item) => {
         // Encontrar divergências deste item específico
-        const itemDivergences = box.divergences.filter(d => d.pickingItemId === item.reference);
+        const itemDivergences = box.divergences.filter(
+          (d) => d.pickingItemId === item.reference,
+        );
         return {
           reference: item.reference,
           color: item.color,
@@ -121,17 +128,18 @@ export class PickingService {
           quantityRequired: item.quantityRequired,
           quantityCollected: item.quantityCollected,
           status: item.status,
-          scannedPieces: item.scannedPieces.map(piece => ({
+          scannedPieces: item.scannedPieces.map((piece) => ({
             barcode: piece.barcode,
-            scannedAt: piece.scannedAt
+            scannedAt: piece.scannedAt,
           })),
-          divergences: itemDivergences.map(div => ({
+          divergences: itemDivergences.map((div) => ({
             reason: div.reason,
             barcode: div.barcode,
-            registeredAt: div.registeredAt
-          }))
+            registeredAt: div.registeredAt,
+            evidencePhotoUrl: div.evidencePhotoUrl,
+          })),
         };
-      })
+      }),
     };
   }
 
@@ -157,14 +165,15 @@ export class PickingService {
     const divergences = await query.getMany();
     return {
       total: divergences.length,
-      divergences: divergences.map(div => ({
+      divergences: divergences.map((div) => ({
         id: div.id,
-        papeletaCode: div.box.papeletaCode,
-        orderId: div.box.orderId,
+        papeletaCode: div.box?.papeletaCode || '',
+        orderId: div.box?.orderId || '',
         item: { reference: div.pickingItemId }, // simplificado, pois o box não tem um PickingItem específico referenciado na entidade divergence
         barcode: div.barcode,
         reason: div.reason,
         registeredAt: div.registeredAt,
+        evidencePhotoUrl: div.evidencePhotoUrl,
       })),
     };
   }
@@ -185,7 +194,7 @@ export class PickingService {
     const byReason: Record<string, number> = {};
     let total = 0;
 
-    results.forEach(row => {
+    results.forEach((row) => {
       const count = parseInt(row.count, 10);
       byReason[row.reason] = count;
       total += count;

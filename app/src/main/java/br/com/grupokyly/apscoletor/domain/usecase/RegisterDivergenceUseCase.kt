@@ -11,11 +11,12 @@ class RegisterDivergenceUseCase @Inject constructor(
         pickingItemId: Long,
         boxId: Long,
         barcode: String?,
-        reason: SkipReason
+        reason: SkipReason,
+        evidencePhotoUrl: String? = null
     ): Result<Unit> {
         if (pickingItemId <= 0 || boxId <= 0) {
             return Result.failure(IllegalArgumentException("IDs inválidos para registrar divergência."))
         }
-        return repository.registerDivergence(pickingItemId, boxId, barcode, reason)
+        return repository.registerDivergence(pickingItemId, boxId, barcode, reason, evidencePhotoUrl)
     }
 }

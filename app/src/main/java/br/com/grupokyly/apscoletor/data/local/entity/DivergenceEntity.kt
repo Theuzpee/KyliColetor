@@ -31,5 +31,6 @@ data class DivergenceEntity(
     val barcode: String?,
     val reason: SkipReason,
     val registeredAt: Long,
-    val syncedAt: Long? = null
+    val syncedAt: Long? = null,
+    val evidencePhotoUrl: String? = null
 )

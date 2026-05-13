@@ -22,6 +22,24 @@ import br.com.grupokyly.apscoletor.presentation.picking.components.LoadingConten
 import br.com.grupokyly.apscoletor.presentation.picking.components.ItemSkippedContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.SkipItemBottomSheet
 import br.com.grupokyly.apscoletor.presentation.picking.components.DebugScannerComponent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import br.com.grupokyly.apscoletor.domain.model.SkipReason
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 @Composable
 fun PickingScreen(
@@ -36,6 +54,19 @@ fun PickingScreen(
     }
 
     var showSkipSheet by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var pendingDivergenceReason by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<SkipReason?>(null) }
+
+
+
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+        val reason = pendingDivergenceReason
+        if (bitmap != null && reason != null) {
+            // Para a apresentação, vamos simular que fizemos upload da imagem e temos a URL
+            val mockPhotoUrl = "https://storage.googleapis.com/kyly-evidence/divergences/photo_${System.currentTimeMillis()}.jpg"
+            viewModel.onEvent(PickingEvent.OnRegisterDivergence(barcode = null, reason = reason, evidencePhotoUrl = mockPhotoUrl))
+        }
+        pendingDivergenceReason = null
+    }
 
     DisposableEffect(Unit) {
         viewModel.onEvent(PickingEvent.OnRegisterHardware(context))
@@ -58,8 +89,20 @@ fun PickingScreen(
                     onSkipRequest = { showSkipSheet = true }
                 )
             }
-            is PickingUiState.ItemComplete -> ItemCompleteContent(state)
-            is PickingUiState.ItemSkipped -> ItemSkippedContent(state)
+            is PickingUiState.ItemComplete -> {
+                ItemCompleteContent(state)
+                androidx.compose.runtime.LaunchedEffect(state) {
+                    kotlinx.coroutines.delay(1500)
+                    viewModel.onEvent(PickingEvent.OnAdvanceToNextItem)
+                }
+            }
+            is PickingUiState.ItemSkipped -> {
+                ItemSkippedContent(state)
+                androidx.compose.runtime.LaunchedEffect(state) {
+                    kotlinx.coroutines.delay(1500)
+                    viewModel.onEvent(PickingEvent.OnAdvanceToNextItem)
+                }
+            }
             is PickingUiState.BoxFinalized -> BoxFinalizedContent(
                 state = state,
                 onNewBox = { /* Idealmente reseta a viewmodel */ }
@@ -99,7 +142,8 @@ fun PickingScreen(
                 },
                 onRegisterDivergence = { reason ->
                     showSkipSheet = false
-                    viewModel.onEvent(PickingEvent.OnRegisterDivergence(barcode = null, reason = reason))
+                    pendingDivergenceReason = reason
+                    cameraLauncher.launch(null) // Abre a câmera
                 }
             )
         }
@@ -111,5 +155,7 @@ fun PickingScreen(
                 viewModel.onEvent(PickingEvent.OnDebugScan(barcode))
             }
         )
+
+
     }
 }

@@ -145,7 +145,8 @@ class PickingRepositoryImpl @Inject constructor(
         pickingItemId: Long,
         boxId: Long,
         barcode: String?,
-        reason: SkipReason
+        reason: SkipReason,
+        evidencePhotoUrl: String?
     ): Result<Unit> = withContext(dispatcher) {
         try {
             val divergence = DivergenceEntity(
@@ -153,7 +154,8 @@ class PickingRepositoryImpl @Inject constructor(
                 boxId = boxId,
                 barcode = barcode,
                 reason = reason,
-                registeredAt = System.currentTimeMillis()
+                registeredAt = System.currentTimeMillis(),
+                evidencePhotoUrl = evidencePhotoUrl
             )
             divergenceDao.insert(divergence)
             Result.success(Unit)

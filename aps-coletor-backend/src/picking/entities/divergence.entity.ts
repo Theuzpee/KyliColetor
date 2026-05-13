@@ -27,6 +27,9 @@ export class DivergenceEntity {
   @Column({ type: 'timestamp' })
   registeredAt: Date;
 
+  @Column({ type: 'varchar', nullable: true, name: 'evidence_photo_url' })
+  evidencePhotoUrl: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

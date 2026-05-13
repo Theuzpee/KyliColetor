@@ -40,14 +40,17 @@ class PickingViewModel @Inject constructor(
     private val skipPickingItemUseCase: SkipPickingItemUseCase,
     private val registerDivergenceUseCase: RegisterDivergenceUseCase,
     private val getBoxItemsUseCase: GetBoxItemsUseCase,
-    private val addressValidator: AddressValidator,
+    private val validateAddressUseCase: br.com.grupokyly.apscoletor.domain.usecase.ValidateAddressUseCase,
     private val scannerReceiver: ScannerReceiver,
     private val scanFeedbackManager: ScanFeedbackManager,
-    private val clock: Clock
+    private val clock: Clock,
+    private val sessionManager: br.com.grupokyly.apscoletor.data.local.SessionManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PickingUiState>(PickingUiState.Idle)
     val uiState: StateFlow<PickingUiState> = _uiState.asStateFlow()
+    
+    private var currentOperatorName: String = "Operador"
 
     private fun buildUpdatedHistory(
         currentHistory: List<br.com.grupokyly.apscoletor.domain.model.ScannedPreview>,
@@ -57,13 +60,20 @@ class PickingViewModel @Inject constructor(
             barcode = barcode,
             time = clock.now().toTimeString()
         )
-        return (listOf(newItem) + currentHistory).take(3)
+        return (listOf(newItem) + currentHistory).take(5)
     }
 
     // Mantemos estado interno apenas de referência para evitar buscas custosas a todo instante se desnecessário.
     // Mas o mais seguro é pegar do próprio uiState se ele for Collecting.
 
     init {
+        viewModelScope.launch {
+            sessionManager.sessionFlow.collect { session ->
+                if (session != null) {
+                    currentOperatorName = session.operatorName
+                }
+            }
+        }
         viewModelScope.launch {
             scannerReceiver.scannedDataFlow.collect { barcode ->
                 val currentState = _uiState.value
@@ -112,8 +122,42 @@ class PickingViewModel @Inject constructor(
             is PickingEvent.OnRegisterHardware -> scannerReceiver.register(event.context)
             is PickingEvent.OnUnregisterHardware -> scannerReceiver.unregister(event.context)
             is PickingEvent.OnSkipItem -> handleSkipItem(event.reason)
-            is PickingEvent.OnRegisterDivergence -> handleRegisterDivergence(event.barcode, event.reason)
+            is PickingEvent.OnRegisterDivergence -> handleRegisterDivergence(event.barcode, event.reason, event.evidencePhotoUrl)
             is PickingEvent.OnDebugScan -> handleDebugScan(event.barcode)
+            is PickingEvent.OnAdvanceToNextItem -> handleAdvanceToNextItem()
+        }
+    }
+
+    private fun handleAdvanceToNextItem() {
+        val currentState = _uiState.value
+        val (box, prevAddress) = when (currentState) {
+            is PickingUiState.ItemComplete -> Pair(currentState.box, currentState.completedItem.address)
+            is PickingUiState.ItemSkipped -> Pair(currentState.box, currentState.skippedItem.address)
+            else -> return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val items = getBoxItemsUseCase(box.id).firstOrNull() ?: emptyList()
+            val nextPending = items.firstOrNull { it.status == ItemStatus.PENDENTE }
+            
+            if (nextPending != null) {
+                val keepAddress = (nextPending.address == prevAddress)
+                
+                _uiState.value = PickingUiState.Collecting(
+                    box = box,
+                    currentItem = nextPending,
+                    currentItemIndex = items.indexOf(nextPending),
+                    collectedCount = nextPending.quantityCollected,
+                    totalItems = items.size,
+                    lastScannedItems = emptyList(), // zera os lidos quando avança para outro SKU
+                    isMultiFloor = box.isReopened,
+                    floorLabel = if (box.isReopened) "Continuando coleta — itens pendentes" else "",
+                    addressConfirmation = if (keepAddress) br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Confirmed else br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending,
+                    operatorName = currentOperatorName
+                )
+            } else {
+                handleFinalizeBoxInternal(box.id, box.createdAt)
+            }
         }
     }
 
@@ -159,11 +203,12 @@ class PickingViewModel @Inject constructor(
                                 totalItems = items.size,
                                 lastScannedItems = emptyList(),
                                 isMultiFloor = box.isReopened,
-                                floorLabel = if (box.isReopened) "Continuando coleta — itens pendentes" else ""
+                                floorLabel = if (box.isReopened) "Continuando coleta — itens pendentes" else "",
+                                operatorName = currentOperatorName
                             )
                         } else {
-                            // Se não há pendentes, finaliza ou avisa
-                            _uiState.value = PickingUiState.Error("Não há itens pendentes para esta caixa.")
+                            // Finaliza direto se a caixa for aberta mas já não tiver itens pendentes
+                            handleFinalizeBoxInternal(box.id, box.createdAt)
                         }
                     }
                 },
@@ -182,7 +227,7 @@ class PickingViewModel @Inject constructor(
 
         viewModelScope.launch {
             val expectedAddress = currentState.currentItem.address
-            val isValid = addressValidator.validate(barcode, expectedAddress)
+            val isValid = validateAddressUseCase(barcode, expectedAddress)
 
             if (isValid) {
                 scanFeedbackManager.scanPartialSuccess()
@@ -234,28 +279,8 @@ class PickingViewModel @Inject constructor(
                             _uiState.value = PickingUiState.ItemComplete(
                                 box = currentState.box,
                                 completedItem = currentState.currentItem,
-                                nextItem = null // Simplificando
+                                nextItem = null // O avanço real agora ocorre via Jetpack Compose
                             )
-                            delay(1500)
-                            
-                            val items = getBoxItemsUseCase(currentState.box.id).firstOrNull() ?: emptyList()
-                            val nextPending = items.firstOrNull { it.status == ItemStatus.PENDENTE }
-                            
-                            if (nextPending != null) {
-                                _uiState.value = PickingUiState.Collecting(
-                                    box = currentState.box,
-                                    currentItem = nextPending,
-                                    currentItemIndex = items.indexOf(nextPending),
-                                    collectedCount = nextPending.quantityCollected,
-                                    totalItems = items.size,
-                                    lastScannedItems = emptyList(), // zera os lidos quando avança
-                                    isMultiFloor = currentState.isMultiFloor,
-                                    floorLabel = currentState.floorLabel,
-                                    addressConfirmation = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending
-                                )
-                            } else {
-                                handleFinalizeBox()
-                            }
                         }
                         is ScanResult.AlreadyScanned -> {
                             scanFeedbackManager.scanError()
@@ -284,21 +309,49 @@ class PickingViewModel @Inject constructor(
 
     private fun handleFinalizeBox() {
         val currentState = _uiState.value
-        val boxId = when (currentState) {
-            is PickingUiState.Collecting -> currentState.box.id
-            is PickingUiState.Error -> return // Precisaríamos do boxId aqui.
+        val (boxId, startedAt) = when (currentState) {
+            is PickingUiState.Collecting -> Pair(currentState.box.id, currentState.box.createdAt)
+            is PickingUiState.ItemComplete -> Pair(currentState.box.id, currentState.box.createdAt)
+            is PickingUiState.Error -> {
+                // Tenta extrair a box do last state se existir. Se não, aborta.
+                return
+            }
             else -> return
         }
+        handleFinalizeBoxInternal(boxId, startedAt)
+    }
 
+    private fun handleFinalizeBoxInternal(boxId: Long, startedAt: Long) {
         viewModelScope.launch(Dispatchers.IO) {
             finalizeBoxUseCase(boxId).fold(
                 onSuccess = { box ->
+                    val items = getBoxItemsUseCase(box.id).firstOrNull() ?: emptyList()
+                    val collected = items.filter { it.status == ItemStatus.COMPLETO }
+                    val totalCollected = collected.sumOf { it.quantityCollected }
+                    val totalRequired = items.sumOf { it.quantityRequired }
+                    val timeMinutes = ((System.currentTimeMillis() - startedAt) / 60000).toInt()
+
                     if (box.status == BoxStatus.FINALIZADA) {
                         scanFeedbackManager.boxFinal()
-                        _uiState.value = PickingUiState.BoxFinalized(box)
+                        _uiState.value = PickingUiState.BoxFinalized(
+                            box = box,
+                            collectedItems = collected,
+                            totalCollected = totalCollected,
+                            totalRequired = totalRequired,
+                            collectionTimeMinutes = timeMinutes
+                        )
                     } else {
+                        val pending = items.filter {
+                            it.status == ItemStatus.PENDENTE || it.status == ItemStatus.FALTA
+                        }
                         scanFeedbackManager.boxPartial()
-                        _uiState.value = PickingUiState.BoxPartial(box)
+                        _uiState.value = PickingUiState.BoxPartial(
+                            box = box,
+                            collectedItems = collected,
+                            pendingItems = pending,
+                            totalCollected = totalCollected,
+                            totalRequired = totalRequired
+                        )
                     }
                 },
                 onFailure = { e ->
@@ -310,17 +363,24 @@ class PickingViewModel @Inject constructor(
     }
 
     private fun handleSavePartialBox() {
-        val currentState = _uiState.value
-        val boxId = when (currentState) {
-            is PickingUiState.Collecting -> currentState.box.id
-            else -> return
-        }
+        val currentState = _uiState.value as? PickingUiState.Collecting ?: return
 
         viewModelScope.launch(Dispatchers.IO) {
-            savePartialBoxUseCase(boxId).fold(
+            savePartialBoxUseCase(currentState.box.id).fold(
                 onSuccess = { box ->
+                    val items = getBoxItemsUseCase(box.id).firstOrNull() ?: emptyList()
+                    val collected = items.filter { it.status == ItemStatus.COMPLETO }
+                    val pending = items.filter {
+                        it.status == ItemStatus.PENDENTE || it.status == ItemStatus.FALTA
+                    }
                     scanFeedbackManager.boxPartial()
-                    _uiState.value = PickingUiState.BoxPartial(box)
+                    _uiState.value = PickingUiState.BoxPartial(
+                        box = box,
+                        collectedItems = collected,
+                        pendingItems = pending,
+                        totalCollected = collected.sumOf { it.quantityCollected },
+                        totalRequired = items.sumOf { it.quantityRequired }
+                    )
                 },
                 onFailure = { e ->
                     scanFeedbackManager.scanError()
@@ -371,33 +431,11 @@ class PickingViewModel @Inject constructor(
                     scanFeedbackManager.scanError() // sinal de atenção
                     
                     _uiState.value = PickingUiState.ItemSkipped(
+                        box = currentState.box,
                         skippedItem = result.item,
                         reason = result.reason,
-                        nextItem = null // Para simplificar, o avanço é gerido ao reler a lista de itens via Room trigger ou refetch
+                        nextItem = null // O avanço real agora ocorre via Jetpack Compose
                     )
-                    
-                    delay(1500)
-                    
-                    // Avançar para próximo pendente
-                    val items = getBoxItemsUseCase(currentState.box.id).firstOrNull() ?: emptyList()
-                    val nextPending = items.firstOrNull { it.status == ItemStatus.PENDENTE }
-                    
-                    if (nextPending != null) {
-                        _uiState.value = PickingUiState.Collecting(
-                                box = currentState.box,
-                                currentItem = nextPending,
-                                currentItemIndex = items.indexOf(nextPending),
-                                collectedCount = nextPending.quantityCollected,
-                                totalItems = items.size,
-                                lastScannedItems = currentState.lastScannedItems,
-                                isMultiFloor = currentState.isMultiFloor,
-                                floorLabel = currentState.floorLabel,
-                                addressConfirmation = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending
-                            )
-                        } else {
-                        // Não há mais itens pendentes, tenta finalizar
-                        handleFinalizeBox()
-                    }
                 },
                 onFailure = { e ->
                     scanFeedbackManager.scanError()
@@ -407,12 +445,12 @@ class PickingViewModel @Inject constructor(
         }
     }
 
-    private fun handleRegisterDivergence(barcode: String?, reason: br.com.grupokyly.apscoletor.domain.model.SkipReason) {
+    private fun handleRegisterDivergence(barcode: String?, reason: br.com.grupokyly.apscoletor.domain.model.SkipReason, evidencePhotoUrl: String?) {
         val currentState = _uiState.value
         if (currentState !is PickingUiState.Collecting) return
 
         viewModelScope.launch(Dispatchers.IO) {
-            registerDivergenceUseCase(currentState.currentItem.id, currentState.box.id, barcode, reason).fold(
+            registerDivergenceUseCase(currentState.currentItem.id, currentState.box.id, barcode, reason, evidencePhotoUrl).fold(
                 onSuccess = {
                     scanFeedbackManager.scanPartialSuccess() // Vibração única leve
                     // Permanece no estado Collecting

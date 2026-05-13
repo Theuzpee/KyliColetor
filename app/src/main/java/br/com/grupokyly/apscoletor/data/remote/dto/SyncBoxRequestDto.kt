@@ -13,5 +13,6 @@ data class SyncBoxRequestDto(
 data class DivergenceDto(
     @SerializedName("reason") val reason: String,
     @SerializedName("barcode") val barcode: String?,
-    @SerializedName("registeredAt") val registeredAt: String
+    @SerializedName("registeredAt") val registeredAt: String,
+    @SerializedName("evidencePhotoUrl") val evidencePhotoUrl: String? = null
 )

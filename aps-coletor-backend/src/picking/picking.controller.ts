@@ -21,6 +21,13 @@ export class PickingController {
     return this.pickingService.syncBox(syncBoxRequestDto);
   }
 
+  @Get('health')
+  @ApiOperation({ summary: 'Verifica a disponibilidade da API para sincronização' })
+  @ApiResponse({ status: 200, description: 'API online' })
+  async checkHealth() {
+    return { status: 'ok', timestamp: new Date().toISOString() };
+  }
+
   @Get('boxes/:papeletaCode')
   @ApiOperation({ summary: 'Verificar se uma papeleta já foi processada' })
   @ApiResponse({ status: 200, description: 'Status da papeleta' })
