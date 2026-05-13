@@ -4,6 +4,24 @@ Projeto de um sistema completo (Aplicativo Android + Backend) focado em **bipage
 
 O sistema foi desenhado para funcionar de forma **offline-first**, garantindo a continuidade da operação mesmo sem conexão com a rede, sincronizando os dados posteriormente através de *background jobs*.
 
+---
+
+## 📸 Tour Visual
+
+Abaixo você pode ver o funcionamento do aplicativo em produção rodando no coletor de dados (temas dinâmicos, validação de endereços, relatórios parciais e modo escuro otimizado para armazéns):
+
+<div align="center">
+  <img src="docs/assets/picking_flow.png" alt="Fluxo de Coleta - Validação de Endereço e Leitura de Peças" width="300" style="margin-right: 20px; border-radius: 8px;">
+  <img src="docs/assets/caixa_salva.png" alt="Resumo de Caixa Salva e Relatório Parcial" width="300" style="border-radius: 8px;">
+</div>
+
+<br/>
+<p align="center">
+  <i>Esquerda: Interface otimizada de Picking e Endereçamento | Direita: Resumo inteligente da caixa com contagem de divergências.</i>
+</p>
+
+---
+
 ## 🏗 Estrutura do Projeto
 
 O repositório é um monorepo que contém as duas partes principais do projeto:
