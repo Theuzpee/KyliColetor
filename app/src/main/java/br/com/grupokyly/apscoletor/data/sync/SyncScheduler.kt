@@ -27,12 +27,12 @@ open class SyncScheduler @Inject constructor(
 
         val request = OneTimeWorkRequestBuilder<SyncPickingWorker>()
             .setConstraints(constraints)
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 15, TimeUnit.SECONDS)
             .build()
 
         workManager.enqueueUniqueWork(
             "SyncPickingWork_Immediate",
-            ExistingWorkPolicy.REPLACE,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
             request
         )
     }

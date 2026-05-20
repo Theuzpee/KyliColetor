@@ -79,6 +79,12 @@ fun PickingScreen(
         when (val state = uiState) {
             is PickingUiState.Idle -> IdleContent()
             is PickingUiState.LoadingBox -> LoadingContent()
+            is PickingUiState.BoxResuming -> {
+                br.com.grupokyly.apscoletor.presentation.picking.components.BoxResumeTimelineContent(
+                    state = state,
+                    onResumeConfirmed = { viewModel.onEvent(PickingEvent.OnResumeBoxConfirmed) }
+                )
+            }
             is PickingUiState.Collecting -> {
                 lastCollectingState = state
                 CollectingContent(

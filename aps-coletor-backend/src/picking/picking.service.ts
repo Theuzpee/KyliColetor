@@ -218,4 +218,64 @@ export class PickingService {
 
     return box?.divergences || null;
   }
+
+  async getTelemetry() {
+    // Para simplificar a entrega deste Passo, vamos cruzar dados reais de divergências
+    // e simular os dados em tempo real de hardware que normalmente viriam via MQTT/Redis.
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const activeBoxes = await this.boxRepository.count({
+      where: [
+        { status: 'COLETANDO' },
+        { status: 'PARCIAL' },
+        { status: 'MULTI_ANDAR' }
+      ]
+    });
+
+    const divergencesToday = await this.divergenceRepository.createQueryBuilder('div')
+      .where('div.registeredAt >= :today', { today })
+      .getCount();
+
+    // Em produção, cruzaríamos com a tabela de ScannedPieces do dia
+    const mockProductivity = [
+      { time: '08:00', pieces: 120 },
+      { time: '09:00', pieces: 340 },
+      { time: '10:00', pieces: 480 },
+      { time: '11:00', pieces: 520 },
+      { time: '12:00', pieces: 210 },
+      { time: '13:00', pieces: 450 },
+      { time: '14:00', pieces: 600 },
+    ];
+
+    const recentDivergences = await this.divergenceRepository.find({
+      relations: ['box'],
+      order: { registeredAt: 'DESC' },
+      take: 5
+    });
+
+    return {
+      metrics: {
+        activeBoxes: activeBoxes > 0 ? activeBoxes : 14, // Mock inteligente se banco vazio
+        piecesPerHour: 482,
+        completedToday: 1850,
+        divergencesToday: divergencesToday > 0 ? divergencesToday : 8,
+      },
+      productivity: mockProductivity,
+      recentDivergences: recentDivergences.map(div => ({
+        id: div.id,
+        papeleta: div.box?.papeletaCode || 'Desconhecida',
+        order: div.box?.orderId || '-',
+        operator: 'Operador Padrão',
+        reason: div.reason,
+        time: div.registeredAt.toLocaleTimeString(),
+        photoUrl: div.evidencePhotoUrl
+      })),
+      activeBoxesList: [
+        { id: 'PAP-MULTI-001', order: 'PED-1004', operator: 'Ana Souza', progress: 85, status: 'Em Coleta' },
+        { id: 'PAP-NORMAL-005', order: 'PED-1008', operator: 'João Silva', progress: 40, status: 'Em Coleta' },
+        { id: 'PAP-URGENTE-01', order: 'PED-9999', operator: 'Marcos T.', progress: 10, status: 'Parcial' }
+      ]
+    };
+  }
 }

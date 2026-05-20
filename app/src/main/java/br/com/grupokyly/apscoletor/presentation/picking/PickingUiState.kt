@@ -9,6 +9,15 @@ sealed class PickingUiState {
     
     object LoadingBox : PickingUiState()
     
+    data class BoxResuming(
+        val box: Box,
+        val collectedItemsCount: Int,
+        val pendingItemsCount: Int,
+        val divergencesCount: Int,
+        val nextAddress: String,
+        val isMultiFloor: Boolean
+    ) : PickingUiState()
+    
     data class Collecting(
         val box: Box,
         val currentItem: PickingItem,

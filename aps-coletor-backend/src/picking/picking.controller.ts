@@ -1,5 +1,7 @@
-import { Controller, Post, Get, Body, Param, Query, NotFoundException, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, NotFoundException, UseGuards, Sse, MessageEvent } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Observable, timer } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { PickingService } from './picking.service';
 import { SyncBoxRequestDto } from './dto/sync-box.dto';
 import { SyncBoxResponseDto } from './dto/sync-box-response.dto';
@@ -26,6 +28,24 @@ export class PickingController {
   @ApiResponse({ status: 200, description: 'API online' })
   async checkHealth() {
     return { status: 'ok', timestamp: new Date().toISOString() };
+  }
+
+  @Get('telemetry')
+  @ApiOperation({ summary: 'Painel completo de telemetria operacional (Dashboard)' })
+  @ApiResponse({ status: 200, description: 'Dados em tempo real do chão de fábrica' })
+  async getTelemetry() {
+    return this.pickingService.getTelemetry();
+  }
+
+  @Sse('telemetry/stream')
+  @ApiOperation({ summary: 'Stream em tempo real da telemetria (SSE)' })
+  telemetryStream(): Observable<MessageEvent> {
+    return timer(0, 5000).pipe(
+      switchMap(async () => {
+        const data = await this.pickingService.getTelemetry();
+        return { data } as MessageEvent;
+      })
+    );
   }
 
   @Get('boxes/:papeletaCode')

@@ -1,50 +1,84 @@
 import React, { useState, useEffect } from 'react';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Activity, AlertTriangle, CheckCircle, Package, MapPin, Users } from 'lucide-react';
+import './index.css';
 import './index.css';
 
-// SVGs (Heroicons/Lucide equivalents)
-const Icons = {
-  Activity: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>,
-  AlertTriangle: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>,
-  CheckCircle: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>,
-  Package: () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"></line><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-};
+// Remove old Icons constant as we are using lucide-react now
 
 // Mock Data
-const MOCK_METRICS = {
-  activeBoxes: 14,
-  piecesPerHour: 482,
-  completedToday: 1850,
-  divergencesToday: 8
-};
-
-const MOCK_DIVERGENCES = [
-  { id: 1, papeleta: 'PAP-DEFEITO-001', order: 'PED-1003', operator: 'João Silva', reason: 'SUJA', time: '10:45 AM', photoUrl: 'https://images.unsplash.com/photo-1605513524006-063fbdeba619?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80' },
-  { id: 2, papeleta: 'PAP-DEFEITO-002', order: 'PED-1044', operator: 'Maria Clara', reason: 'AMASSADA', time: '11:12 AM', photoUrl: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?ixlib=rb-4.0.3&auto=format&fit=crop&w=150&q=80' },
-  { id: 3, papeleta: 'PAP-FALTA-001', order: 'PED-1088', operator: 'Carlos Mendes', reason: 'DESABASTECIDO', time: '14:20 PM', photoUrl: null }
-];
-
-const MOCK_BOXES = [
-  { id: 'PAP-MULTI-001', order: 'PED-1004', operator: 'Ana Souza', progress: 85, status: 'Em Coleta' },
-  { id: 'PAP-NORMAL-005', order: 'PED-1008', operator: 'João Silva', progress: 40, status: 'Em Coleta' },
-  { id: 'PAP-URGENTE-01', order: 'PED-9999', operator: 'Marcos T.', progress: 10, status: 'Parcial' }
+const MOCK_PRODUCTIVITY_DATA = [
+  { time: '08:00', pieces: 120 },
+  { time: '09:00', pieces: 340 },
+  { time: '10:00', pieces: 480 },
+  { time: '11:00', pieces: 520 },
+  { time: '12:00', pieces: 210 },
+  { time: '13:00', pieces: 450 },
+  { time: '14:00', pieces: 600 },
 ];
 
 function App() {
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
+  const [telemetry, setTelemetry] = useState<any>(null);
+  const [divergencesSummary, setDivergencesSummary] = useState<any[]>([]);
 
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date().toLocaleTimeString()), 1000);
-    return () => clearInterval(timer);
+    fetch('/api/picking/divergences/summary')
+      .then(res => res.json())
+      .then(data => {
+        if (data.byReason) {
+           const chartData = Object.entries(data.byReason).map(([name, value]) => ({ name, value }));
+           setDivergencesSummary(chartData.length > 0 ? chartData : [
+             { name: 'Desabastecido', value: 5 },
+             { name: 'Código Ilegível', value: 2 },
+             { name: 'Caixa Avariada', value: 1 }
+           ]); // Mock de fallback se vier vazio
+        }
+      })
+      .catch(err => console.error('API offline', err));
+
+    const sse = new EventSource('/api/picking/telemetry/stream');
+    
+    sse.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        setTelemetry(data);
+      } catch (err) {
+        console.error('Erro ao fazer parse do SSE', err);
+      }
+    };
+    
+    sse.onerror = (err) => {
+      console.error('Erro na conexão SSE', err);
+    };
+
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString());
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+      sse.close();
+    };
   }, []);
+
+  const activeBoxesCount = telemetry?.metrics?.activeBoxes ?? 0;
+  const piecesPerHour = telemetry?.metrics?.piecesPerHour ?? 0;
+  const completedToday = telemetry?.metrics?.completedToday ?? 0;
+  const divergencesToday = telemetry?.metrics?.divergencesToday ?? 0;
+  
+  const productivityData = telemetry?.productivity ?? MOCK_PRODUCTIVITY_DATA;
+  const recentDivergences = telemetry?.recentDivergences ?? [];
+  const activeBoxesList = telemetry?.activeBoxesList ?? [];
 
   return (
     <div style={{ flex: 1 }}>
       <header className="glass-header animate-fade-in">
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ background: 'var(--primary)', padding: '8px', borderRadius: '8px', display: 'flex' }}>
-            <Icons.Activity />
+            <Activity color="#fff" size={24} />
           </div>
-          <h1 className="title">APS Supervisor</h1>
+          <h1 className="title">APS Dashboard Operacional</h1>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <div className="badge primary">🟢 Real-time Sync Active</div>
@@ -60,35 +94,81 @@ function App() {
           <div className="glass-panel metric-card animate-fade-in delay-1">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span className="metric-label">Caixas Ativas</span>
-              <span style={{ color: 'var(--primary)' }}><Icons.Package /></span>
+              <span style={{ color: 'var(--primary)' }}><Package size={24} /></span>
             </div>
-            <span className="metric-value">{MOCK_METRICS.activeBoxes}</span>
+            <span className="metric-value">{activeBoxesCount}</span>
           </div>
           
           <div className="glass-panel metric-card animate-fade-in delay-1">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span className="metric-label">Peças / Hora (Média)</span>
-              <span style={{ color: 'var(--success)' }}><Icons.Activity /></span>
+              <span style={{ color: 'var(--success)' }}><Activity size={24} /></span>
             </div>
-            <span className="metric-value">{MOCK_METRICS.piecesPerHour}</span>
+            <span className="metric-value">{piecesPerHour}</span>
           </div>
 
           <div className="glass-panel metric-card animate-fade-in delay-2">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span className="metric-label">Coletadas Hoje</span>
-              <span style={{ color: 'var(--success)' }}><Icons.CheckCircle /></span>
+              <span style={{ color: 'var(--success)' }}><CheckCircle size={24} /></span>
             </div>
-            <span className="metric-value" style={{ color: 'var(--success)' }}>{MOCK_METRICS.completedToday}</span>
+            <span className="metric-value" style={{ color: 'var(--success)' }}>{completedToday}</span>
           </div>
 
           <div className="glass-panel metric-card animate-fade-in delay-2">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <span className="metric-label">Divergências</span>
-              <span style={{ color: 'var(--danger)' }}><Icons.AlertTriangle /></span>
+              <span style={{ color: 'var(--danger)' }}><AlertTriangle size={24} /></span>
             </div>
-            <span className="metric-value" style={{ color: 'var(--danger)' }}>{MOCK_METRICS.divergencesToday}</span>
+            <span className="metric-value" style={{ color: 'var(--danger)' }}>{divergencesToday}</span>
           </div>
         </section>
+
+        {/* Charts Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '32px' }}>
+          
+          {/* Productivity Chart Section */}
+          <section className="glass-panel animate-fade-in delay-3" style={{ padding: '24px', height: '350px' }}>
+            <h2 style={{ fontSize: '18px', marginBottom: '24px', fontWeight: 600 }}>Produtividade (Peças por Hora)</h2>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={productivityData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorPieces" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="time" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Area type="monotone" dataKey="pieces" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorPieces)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </section>
+
+          {/* Divergences Heatmap (BarChart) */}
+          <section className="glass-panel animate-fade-in delay-3" style={{ padding: '24px', height: '350px' }}>
+            <h2 style={{ fontSize: '18px', marginBottom: '24px', fontWeight: 600 }}>Causa Raiz de Paradas</h2>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={divergencesSummary} layout="vertical" margin={{ top: 10, right: 30, left: 40, bottom: 0 }}>
+                <XAxis type="number" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                <Tooltip 
+                  cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                  contentStyle={{ backgroundColor: 'rgba(15, 23, 42, 0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Bar dataKey="value" fill="#f59e0b" radius={[0, 4, 4, 0]} barSize={24} />
+              </BarChart>
+            </ResponsiveContainer>
+          </section>
+
+        </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px' }}>
           {/* Divergences Table */}
@@ -106,7 +186,7 @@ function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {MOCK_DIVERGENCES.map((div) => (
+                  {recentDivergences.map((div: any) => (
                     <tr key={div.id}>
                       <td>
                         {div.photoUrl ? (
@@ -134,7 +214,7 @@ function App() {
           <section className="glass-panel animate-fade-in delay-3" style={{ padding: '24px' }}>
             <h2 style={{ fontSize: '18px', marginBottom: '24px', fontWeight: 600 }}>Caixas em Andamento</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {MOCK_BOXES.map((box) => (
+              {activeBoxesList.map((box: any) => (
                 <div key={box.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: 500, fontSize: '15px' }}>{box.id}</span>

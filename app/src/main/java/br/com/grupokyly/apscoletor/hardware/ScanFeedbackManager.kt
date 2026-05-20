@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import br.com.grupokyly.apscoletor.domain.hardware.FeedbackProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -16,7 +17,7 @@ import javax.inject.Singleton
 @Singleton
 class ScanFeedbackManager @Inject constructor(
     @ApplicationContext private val context: Context
-) {
+) : FeedbackProvider {
 
     private val toneGenerator: ToneGenerator? = try {
         ToneGenerator(AudioManager.STREAM_MUSIC, 100)
@@ -35,7 +36,7 @@ class ScanFeedbackManager @Inject constructor(
     /**
      * LED verde + 1 bipe simples (peça OK, SKU ainda não completa)
      */
-    fun scanPartialSuccess() {
+    override fun scanPartialSuccess() {
         triggerGoodReadLed(success = true)
         playBeep(ToneGenerator.TONE_PROP_BEEP, 100)
         vibrate(longArrayOf(0, 100))
@@ -44,7 +45,7 @@ class ScanFeedbackManager @Inject constructor(
     /**
      * LED verde + 2 bipes simples (SKU atingiu quantidade, próximo endereço)
      */
-    fun scanSkuComplete() {
+    override fun scanSkuComplete() {
         playBeep(ToneGenerator.TONE_PROP_BEEP2, 200)
         vibrate(longArrayOf(0, 100, 50, 100))
     }
@@ -52,7 +53,7 @@ class ScanFeedbackManager @Inject constructor(
     /**
      * LED vermelho + bipe contínuo 2 segundos (SKU errada ou peça sem saldo)
      */
-    fun scanError() {
+    override fun scanError() {
         triggerGoodReadLed(success = false)
         playBeep(ToneGenerator.TONE_SUP_ERROR, 2000)
         vibrate(longArrayOf(0, 500, 100, 500, 100, 500))
@@ -61,7 +62,7 @@ class ScanFeedbackManager @Inject constructor(
     /**
      * Sinal sonoro DISTINTO (diferente de positivo e negativo)
      */
-    fun boxFinal() {
+    override fun boxFinal() {
         playBeep(ToneGenerator.TONE_CDMA_ALERT_CALL_GUARD, 500)
         vibrate(longArrayOf(0, 300, 100, 300))
     }
@@ -69,7 +70,7 @@ class ScanFeedbackManager @Inject constructor(
     /**
      * Sinal sonoro diferente do finalizado para indicar caixa parcial
      */
-    fun boxPartial() {
+    override fun boxPartial() {
         playBeep(ToneGenerator.TONE_CDMA_NETWORK_USA_RINGBACK, 400)
         vibrate(longArrayOf(0, 200, 200, 200))
     }
@@ -104,7 +105,34 @@ class ScanFeedbackManager @Inject constructor(
         }
     }
 
-    fun release() {
+    /**
+     * Sinal sonoro GRAVE + Vibração gaguejada para indicar Erro de Corredor/Sequência
+     */
+    override fun scanSequenceError() {
+        triggerGoodReadLed(success = false)
+        playBeep(ToneGenerator.TONE_CDMA_ABBR_ALERT, 800)
+        vibrate(longArrayOf(0, 150, 100, 150, 100, 500))
+    }
+
+    /**
+     * Sinal curto e agudo para Item Duplicado
+     */
+    override fun scanDuplicateError() {
+        triggerGoodReadLed(success = false)
+        playBeep(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, 300)
+        vibrate(longArrayOf(0, 100))
+    }
+
+    /**
+     * Som de sucesso suave para Divergência/Pular Item (Não é erro, é uma ação finalizada com sucesso)
+     */
+    override fun scanDivergenceSaved() {
+        triggerGoodReadLed(success = true)
+        playBeep(ToneGenerator.TONE_PROP_PROMPT, 400)
+        vibrate(longArrayOf(0, 50, 50, 50))
+    }
+
+    override fun release() {
         toneGenerator?.release()
     }
 }

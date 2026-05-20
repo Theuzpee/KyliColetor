@@ -11,6 +11,7 @@ sealed class PickingEvent {
     object OnSavePartial : PickingEvent()
     object OnSaveMultiFloor : PickingEvent()
     object OnAdvanceToNextItem : PickingEvent()
+    object OnResumeBoxConfirmed : PickingEvent()
     data class OnRegisterHardware(val context: Context) : PickingEvent()
     data class OnUnregisterHardware(val context: Context) : PickingEvent()
     data class OnSkipItem(val reason: SkipReason) : PickingEvent()
