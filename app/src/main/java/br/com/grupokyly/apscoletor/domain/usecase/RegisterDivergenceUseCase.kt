@@ -4,10 +4,10 @@ import br.com.grupokyly.apscoletor.domain.model.SkipReason
 import br.com.grupokyly.apscoletor.domain.repository.PickingRepository
 import javax.inject.Inject
 
-class RegisterDivergenceUseCase @Inject constructor(
+open class RegisterDivergenceUseCase @Inject constructor(
     private val repository: PickingRepository
 ) {
-    suspend operator fun invoke(
+    open suspend operator fun invoke(
         pickingItemId: Long,
         boxId: Long,
         barcode: String?,

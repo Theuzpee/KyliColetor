@@ -7,6 +7,7 @@ import br.com.grupokyly.apscoletor.domain.model.PickingItem
 import br.com.grupokyly.apscoletor.domain.model.ScannedPreview
 import br.com.grupokyly.apscoletor.domain.model.UserSession
 import br.com.grupokyly.apscoletor.data.remote.dto.LoginResponseDto
+import br.com.grupokyly.apscoletor.data.remote.dto.SyncBoxRequestDto
 
 fun fakeBox(status: BoxStatus = BoxStatus.EM_COLETA): Box {
     return Box(
@@ -33,12 +34,12 @@ fun fakePickingItem(status: ItemStatus = ItemStatus.PENDENTE): PickingItem {
     )
 }
 
-fun br.com.grupokyly.apscoletor.data.remote.dto.fakeSyncBoxRequestDto(): br.com.grupokyly.apscoletor.data.remote.dto.SyncBoxRequestDto {
-    return br.com.grupokyly.apscoletor.data.remote.dto.SyncBoxRequestDto(
+fun fakeSyncBoxRequestDto(): SyncBoxRequestDto {
+    return SyncBoxRequestDto(
         papeletaCode = "PAP123",
         orderId = "PED-999",
         status = "FINALIZADA",
-        collectedAt = 1000L,
+        collectedAt = "1000",
         items = emptyList()
     )
 }

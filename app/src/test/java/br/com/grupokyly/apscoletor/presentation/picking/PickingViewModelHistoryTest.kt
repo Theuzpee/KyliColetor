@@ -48,17 +48,28 @@ class PickingViewModelHistoryTest {
         
         fakeRepository.getBoxItemsResult = listOf(fakePickingItem())
 
+        val fakeSaveMultiFloor = mockk<br.com.grupokyly.apscoletor.domain.usecase.SaveMultiFloorBoxUseCase>(relaxed = true)
+        val fakeGetBoxItems = mockk<br.com.grupokyly.apscoletor.domain.usecase.GetBoxItemsUseCase>(relaxed = true)
+        val fakeValidateAddress = mockk<br.com.grupokyly.apscoletor.domain.usecase.ValidateAddressUseCase>(relaxed = true)
+        val fakeSessionManager = mockk<br.com.grupokyly.apscoletor.data.local.SessionManager>(relaxed = true)
+
+        io.mockk.every { fakeGetBoxItems(any()) } answers { kotlinx.coroutines.flow.flowOf(fakeRepository.getBoxItemsResult) }
+        io.mockk.every { fakeSessionManager.sessionFlow } returns kotlinx.coroutines.flow.flowOf(null)
+
         viewModel = PickingViewModel(
             openBoxUseCase = fakeOpenBox,
             registerScanUseCase = fakeRegisterScan,
             finalizeBoxUseCase = fakeFinalize,
             savePartialBoxUseCase = fakeSavePartial,
+            saveMultiFloorBoxUseCase = fakeSaveMultiFloor,
             skipPickingItemUseCase = FakeSkipPickingItemUseCase(),
             registerDivergenceUseCase = FakeRegisterDivergenceUseCase(),
-            repository = fakeRepository,
-            dataWedgeReceiver = fakeReceiver,
+            getBoxItemsUseCase = fakeGetBoxItems,
+            validateAddressUseCase = fakeValidateAddress,
+            scannerReceiver = fakeReceiver,
             scanFeedbackManager = fakeFeedback,
-            clock = fakeClock
+            clock = fakeClock,
+            sessionManager = fakeSessionManager
         )
     }
 
@@ -123,7 +134,7 @@ class PickingViewModelHistoryTest {
         viewModel.onEvent(PickingEvent.OnPieceScan("PECA-DUPLICADA"))
         advanceUntilIdle()
 
-        advanceTimeBy(2100)
+        advanceTimeBy(5100)
 
         val state = viewModel.uiState.value
         assertIs<PickingUiState.Collecting>(state)
@@ -156,7 +167,7 @@ class PickingViewModelHistoryTest {
     fun `quantity complete scan adds to history`() = runTest {
         viewModel.onEvent(PickingEvent.OnPapeletaScanned("PAP123"))
         advanceUntilIdle()
-        fakeRegisterScan.result = Result.success(ScanResult.QuantityComplete(fakePickingItem()))
+        fakeRegisterScan.result = Result.success(ScanResult.QuantityComplete("PECA-COMPLETA"))
 
         viewModel.onEvent(PickingEvent.OnPieceScan("PECA-COMPLETA"))
         advanceUntilIdle()

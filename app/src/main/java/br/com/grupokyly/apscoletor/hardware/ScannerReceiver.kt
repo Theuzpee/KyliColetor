@@ -14,12 +14,12 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class ScannerReceiver @Inject constructor() {
+open class ScannerReceiver @Inject constructor() {
 
     private val _scannedDataFlow = MutableSharedFlow<String>(
         extraBufferCapacity = 10
     )
-    val scannedDataFlow: SharedFlow<String> = _scannedDataFlow.asSharedFlow()
+    open val scannedDataFlow: SharedFlow<String> = _scannedDataFlow.asSharedFlow()
 
     private var isRegistered = false
 
@@ -55,7 +55,7 @@ class ScannerReceiver @Inject constructor() {
         }
     }
 
-    fun register(context: Context) {
+    open fun register(context: Context) {
         if (!isRegistered) {
             val appContext = context.applicationContext
             val filter = IntentFilter().apply {
@@ -78,9 +78,9 @@ class ScannerReceiver @Inject constructor() {
                 Log.e("ScannerReceiver", "Erro ao registrar: ${e.message}")
             }
         }
-    }
-
-    fun unregister(context: Context) {
+     }
+ 
+     open fun unregister(context: Context) {
         if (isRegistered) {
             try {
                 context.applicationContext.unregisterReceiver(receiver)

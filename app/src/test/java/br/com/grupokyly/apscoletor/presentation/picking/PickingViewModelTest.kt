@@ -53,19 +53,30 @@ class PickingViewModelTest {
         fakeReceiver = FakeDataWedgeReceiver()
         fakeClock = FakeClock()
         
-        // Mocking the repository getBoxItems to return a valid flow to avoid sticking in LoadingBox
-        val itemsFlow = kotlinx.coroutines.flow.flowOf(listOf(fakePickingItem()))
-        io.mockk.every { fakeRepository.getBoxItems(any()) } returns itemsFlow
+        val fakeSaveMultiFloor = mockk<br.com.grupokyly.apscoletor.domain.usecase.SaveMultiFloorBoxUseCase>(relaxed = true)
+        val fakeSkipItem = mockk<br.com.grupokyly.apscoletor.domain.usecase.SkipPickingItemUseCase>(relaxed = true)
+        val fakeRegisterDiv = mockk<br.com.grupokyly.apscoletor.domain.usecase.RegisterDivergenceUseCase>(relaxed = true)
+        val fakeGetBoxItems = mockk<br.com.grupokyly.apscoletor.domain.usecase.GetBoxItemsUseCase>(relaxed = true)
+        val fakeValidateAddress = mockk<br.com.grupokyly.apscoletor.domain.usecase.ValidateAddressUseCase>(relaxed = true)
+        val fakeSessionManager = mockk<br.com.grupokyly.apscoletor.data.local.SessionManager>(relaxed = true)
+
+        io.mockk.every { fakeGetBoxItems(any()) } returns kotlinx.coroutines.flow.flowOf(listOf(fakePickingItem()))
+        io.mockk.every { fakeSessionManager.sessionFlow } returns kotlinx.coroutines.flow.flowOf(null)
 
         viewModel = PickingViewModel(
             openBoxUseCase = fakeOpenBox,
             registerScanUseCase = fakeRegisterScan,
             finalizeBoxUseCase = fakeFinalize,
             savePartialBoxUseCase = fakeSavePartial,
-            repository = fakeRepository,
-            dataWedgeReceiver = fakeReceiver,
+            saveMultiFloorBoxUseCase = fakeSaveMultiFloor,
+            skipPickingItemUseCase = fakeSkipItem,
+            registerDivergenceUseCase = fakeRegisterDiv,
+            getBoxItemsUseCase = fakeGetBoxItems,
+            validateAddressUseCase = fakeValidateAddress,
+            scannerReceiver = fakeReceiver,
             scanFeedbackManager = fakeFeedback,
-            clock = fakeClock
+            clock = fakeClock,
+            sessionManager = fakeSessionManager
         )
     }
 
@@ -111,8 +122,8 @@ class PickingViewModelTest {
             assertTrue(error is PickingUiState.Error)
             assertTrue((error as PickingUiState.Error).message.contains("bipada", ignoreCase = true))
 
-            // Advance virtual time by 2000ms (the delay in the ViewModel)
-            advanceTimeBy(2001)
+            // Advance virtual time by 5000ms (the delay in the ViewModel)
+            advanceTimeBy(5001)
 
             val reverted = awaitItem()
             assertTrue(reverted is PickingUiState.Collecting)
@@ -128,7 +139,7 @@ class PickingViewModelTest {
         advanceUntilIdle()
         
         fakeRegisterScan.result = Result.success(
-            ScanResult.QuantityComplete(fakePickingItem(status = ItemStatus.COMPLETO))
+            ScanResult.QuantityComplete("BARCODE_OK")
         )
 
         viewModel.uiState.test {

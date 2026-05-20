@@ -95,6 +95,17 @@ async function bootstrap() {
     []
   );
 
+  // CENÁRIO 6 — Caixa 100% pendente (Início do fluxo limpo para teste no app)
+  await saveBoxIfNotExists(
+    { papeletaCode: 'PAP-PENDENTE-001', orderId: 'PED-1006', status: 'EM_COLETA' },
+    [
+      { reference: 'REF-6A', color: 'PRETO', size: 'P', address: 'A02', quantityRequired: 3, quantityCollected: 0, status: 'PENDENTE' },
+      { reference: 'REF-6B', color: 'PRETO', size: 'M', address: 'A02', quantityRequired: 2, quantityCollected: 0, status: 'PENDENTE' },
+      { reference: 'REF-6C', color: 'PRETO', size: 'G', address: 'B01', quantityRequired: 1, quantityCollected: 0, status: 'PENDENTE' }
+    ],
+    []
+  );
+
   console.log('✅ Seed de Picking finalizado com sucesso!');
   await app.close();
 }

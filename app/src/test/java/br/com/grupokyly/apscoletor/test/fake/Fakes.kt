@@ -8,7 +8,7 @@ import br.com.grupokyly.apscoletor.domain.usecase.FinalizeBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.OpenBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.RegisterScanUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.SavePartialBoxUseCase
-import br.com.grupokyly.apscoletor.hardware.DataWedgeReceiver
+import br.com.grupokyly.apscoletor.hardware.ScannerReceiver
 import br.com.grupokyly.apscoletor.domain.model.PickingItem
 import br.com.grupokyly.apscoletor.domain.model.SkipReason
 import br.com.grupokyly.apscoletor.domain.repository.PickingRepository
@@ -39,7 +39,7 @@ class FakeSavePartialBoxUseCase : SavePartialBoxUseCase(mockk()) {
     override suspend operator fun invoke(boxId: Long): Result<Box> = result
 }
 
-class FakeDataWedgeReceiver : DataWedgeReceiver() {
+class FakeDataWedgeReceiver : ScannerReceiver() {
     val flow = MutableSharedFlow<String>(extraBufferCapacity = 10)
     
     // We override the flow from the parent class
@@ -61,10 +61,11 @@ class FakePickingRepository : PickingRepository {
     
     override suspend fun skipItem(pickingItemId: Long, boxId: Long, reason: SkipReason): Result<ScanResult.ItemSkipped> = skipItemResult
     
-    override suspend fun registerDivergence(pickingItemId: Long, boxId: Long, barcode: String?, reason: SkipReason): Result<Unit> = registerDivergenceResult
+    override suspend fun registerDivergence(pickingItemId: Long, boxId: Long, barcode: String?, reason: SkipReason, evidencePhotoUrl: String?): Result<Unit> = registerDivergenceResult
     
     override suspend fun finalizeBox(boxId: Long): Result<Box> = Result.success(fakeBox(status = BoxStatus.FINALIZADA))
     override suspend fun savePartialBox(boxId: Long): Result<Box> = Result.success(fakeBox(status = BoxStatus.PARCIAL))
+    override suspend fun saveMultiFloorBox(boxId: Long): Result<Box> = Result.success(fakeBox(status = BoxStatus.MULTI_ANDAR))
 }
 
 class FakeSkipPickingItemUseCase : SkipPickingItemUseCase(mockk()) {
@@ -74,7 +75,7 @@ class FakeSkipPickingItemUseCase : SkipPickingItemUseCase(mockk()) {
 
 class FakeRegisterDivergenceUseCase : RegisterDivergenceUseCase(mockk()) {
     var result: Result<Unit> = Result.success(Unit)
-    override suspend operator fun invoke(pickingItemId: Long, boxId: Long, barcode: String?, reason: SkipReason): Result<Unit> = result
+    override suspend operator fun invoke(pickingItemId: Long, boxId: Long, barcode: String?, reason: SkipReason, evidencePhotoUrl: String?): Result<Unit> = result
 }
 
 // Dummy mockk helper so we don't need to import mockk everywhere inside the fakes

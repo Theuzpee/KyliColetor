@@ -21,7 +21,6 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import kotlin.test.assertIs
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PickingViewModelSkipTest {
@@ -56,17 +55,28 @@ class PickingViewModelSkipTest {
         
         fakeRepository.getBoxItemsResult = listOf(fakePickingItem())
 
+        val fakeSaveMultiFloor = mockk<br.com.grupokyly.apscoletor.domain.usecase.SaveMultiFloorBoxUseCase>(relaxed = true)
+        val fakeGetBoxItems = mockk<br.com.grupokyly.apscoletor.domain.usecase.GetBoxItemsUseCase>(relaxed = true)
+        val fakeValidateAddress = mockk<br.com.grupokyly.apscoletor.domain.usecase.ValidateAddressUseCase>(relaxed = true)
+        val fakeSessionManager = mockk<br.com.grupokyly.apscoletor.data.local.SessionManager>(relaxed = true)
+
+        io.mockk.every { fakeGetBoxItems(any()) } answers { kotlinx.coroutines.flow.flowOf(fakeRepository.getBoxItemsResult) }
+        io.mockk.every { fakeSessionManager.sessionFlow } returns kotlinx.coroutines.flow.flowOf(null)
+
         viewModel = PickingViewModel(
             openBoxUseCase = fakeOpenBox,
             registerScanUseCase = fakeRegisterScan,
             finalizeBoxUseCase = fakeFinalize,
             savePartialBoxUseCase = fakeSavePartial,
+            saveMultiFloorBoxUseCase = fakeSaveMultiFloor,
             skipPickingItemUseCase = fakeSkipItem,
             registerDivergenceUseCase = fakeRegisterDivergence,
-            repository = fakeRepository,
-            dataWedgeReceiver = fakeReceiver,
+            getBoxItemsUseCase = fakeGetBoxItems,
+            validateAddressUseCase = fakeValidateAddress,
+            scannerReceiver = fakeReceiver,
             scanFeedbackManager = fakeFeedback,
-            clock = fakeClock
+            clock = fakeClock,
+            sessionManager = fakeSessionManager
         )
     }
 
@@ -75,7 +85,7 @@ class PickingViewModelSkipTest {
         // Arrange: colocar ViewModel em Collecting
         viewModel.onEvent(PickingEvent.OnPapeletaScanned("PAP123"))
         advanceUntilIdle()
-        assertIs<PickingUiState.Collecting>(viewModel.uiState.value)
+        assertTrue(viewModel.uiState.value is PickingUiState.Collecting)
 
         fakeSkipItem.result = Result.success(
             ScanResult.ItemSkipped(
@@ -97,8 +107,8 @@ class PickingViewModelSkipTest {
 
             // Deve emitir ItemSkipped
             val skipped = awaitItem()
-            assertIs<PickingUiState.ItemSkipped>(skipped)
-            assertEquals(SkipReason.DESABASTECIDO, skipped.reason)
+            assertTrue(skipped is PickingUiState.ItemSkipped)
+            assertEquals(SkipReason.DESABASTECIDO, (skipped as PickingUiState.ItemSkipped).reason)
 
             // Feedback sonoro de atenção
             verify { fakeFeedback.scanError() }
@@ -107,8 +117,8 @@ class PickingViewModelSkipTest {
             advanceTimeBy(1501)
             val next = awaitItem()
             assertTrue(
-                next is PickingUiState.Collecting || next is PickingUiState.BoxPartial,
-                "Estado esperado: Collecting ou BoxPartial, recebido: $next"
+                "Estado esperado: Collecting ou BoxPartial, recebido: $next",
+                next is PickingUiState.Collecting || next is PickingUiState.BoxPartial
             )
 
             cancelAndIgnoreRemainingEvents()
@@ -134,7 +144,7 @@ class PickingViewModelSkipTest {
         viewModel.onEvent(PickingEvent.OnPapeletaScanned("PAP123"))
         advanceUntilIdle()
         val collectingState = viewModel.uiState.value
-        assertIs<PickingUiState.Collecting>(collectingState)
+        assertTrue(collectingState is PickingUiState.Collecting)
 
         viewModel.uiState.test {
             skipItems(1)
@@ -142,7 +152,8 @@ class PickingViewModelSkipTest {
             viewModel.onEvent(
                 PickingEvent.OnRegisterDivergence(
                     barcode = null,
-                    reason = SkipReason.SUJA
+                    reason = SkipReason.SUJA,
+                    evidencePhotoUrl = null
                 )
             )
             advanceUntilIdle()
@@ -183,7 +194,7 @@ class PickingViewModelSkipTest {
             advanceTimeBy(1600) // passar o delay de 1.5s
 
             val finalState = awaitItem()
-            assertIs<PickingUiState.BoxPartial>(finalState)
+            assertTrue(finalState is PickingUiState.BoxPartial)
 
             verify { fakeFeedback.boxPartial() }
 
@@ -191,3 +202,4 @@ class PickingViewModelSkipTest {
         }
     }
 }
+

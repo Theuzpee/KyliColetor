@@ -229,6 +229,8 @@ class PickingViewModel @Inject constructor(
                 onFailure = { e ->
                     scanFeedbackManager.scanError()
                     _uiState.value = PickingUiState.Error(e.message ?: "Erro desconhecido")
+                    delay(5000)
+                    _uiState.value = PickingUiState.Idle
                 }
             )
         }
@@ -263,7 +265,7 @@ class PickingViewModel @Inject constructor(
                     )
                 }
                 
-                delay(3000)
+                delay(5000)
                 
                 // Reverte estado do endereço ou tira o banner de erro dependendo de onde ele parou
                 val currentNow = _uiState.value
@@ -314,13 +316,13 @@ class PickingViewModel @Inject constructor(
                         is ScanResult.AlreadyScanned -> {
                             scanFeedbackManager.scanDuplicateError()
                             _uiState.value = PickingUiState.Error("Peça já bipada nesta caixa.")
-                            delay(2000)
+                            delay(5000)
                             _uiState.value = currentState // Volta para Collecting sem perder estado
                         }
                         is ScanResult.SkuNotFound -> {
                             scanFeedbackManager.scanError()
                             _uiState.value = PickingUiState.Error("Peça não pertence a este endereço.")
-                            delay(2000)
+                            delay(5000)
                             _uiState.value = currentState // Volta para Collecting sem perder estado
                         }
                         is ScanResult.ItemSkipped -> {
@@ -347,10 +349,10 @@ class PickingViewModel @Inject constructor(
             }
             else -> return
         }
-        handleFinalizeBoxInternal(boxId, startedAt)
+        handleFinalizeBoxInternal(boxId, startedAt, currentState)
     }
 
-    private fun handleFinalizeBoxInternal(boxId: Long, startedAt: Long) {
+    private fun handleFinalizeBoxInternal(boxId: Long, startedAt: Long, previousState: PickingUiState = PickingUiState.Idle) {
         viewModelScope.launch(Dispatchers.IO) {
             finalizeBoxUseCase(boxId).fold(
                 onSuccess = { box ->
@@ -386,6 +388,8 @@ class PickingViewModel @Inject constructor(
                 onFailure = { e ->
                     scanFeedbackManager.scanError()
                     _uiState.value = PickingUiState.Error(e.message ?: "Erro ao finalizar.")
+                    delay(5000)
+                    _uiState.value = previousState
                 }
             )
         }
@@ -414,6 +418,8 @@ class PickingViewModel @Inject constructor(
                 onFailure = { e ->
                     scanFeedbackManager.scanError()
                     _uiState.value = PickingUiState.Error(e.message ?: "Erro ao salvar parcial.")
+                    delay(5000)
+                    _uiState.value = currentState
                 }
             )
         }
@@ -443,7 +449,7 @@ class PickingViewModel @Inject constructor(
                 onFailure = { e ->
                     scanFeedbackManager.scanError()
                     _uiState.value = PickingUiState.Error(e.message ?: "Erro ao salvar multi-andar.")
-                    delay(2000)
+                    delay(5000)
                     _uiState.value = currentState
                 }
             )
@@ -469,6 +475,8 @@ class PickingViewModel @Inject constructor(
                 onFailure = { e ->
                     scanFeedbackManager.scanError()
                     _uiState.value = PickingUiState.Error(e.message ?: "Erro ao pular item.")
+                    delay(5000)
+                    _uiState.value = currentState
                 }
             )
         }
@@ -487,7 +495,7 @@ class PickingViewModel @Inject constructor(
                 onFailure = { e ->
                     scanFeedbackManager.scanError()
                     _uiState.value = PickingUiState.Error(e.message ?: "Erro ao registrar divergência.")
-                    delay(2000)
+                    delay(5000)
                     _uiState.value = currentState
                 }
             )
