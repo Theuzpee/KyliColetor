@@ -54,13 +54,15 @@ class PickingViewModel @Inject constructor(
 
     private fun buildUpdatedHistory(
         currentHistory: List<br.com.grupokyly.apscoletor.domain.model.ScannedPreview>,
-        barcode: String
+        barcode: String,
+        isManual: Boolean = false
     ): List<br.com.grupokyly.apscoletor.domain.model.ScannedPreview> {
         val newItem = br.com.grupokyly.apscoletor.domain.model.ScannedPreview(
             barcode = barcode,
-            time = clock.now().toTimeString()
+            time = clock.now().toTimeString(),
+            isManual = isManual
         )
-        return (listOf(newItem) + currentHistory).take(5)
+        return (listOf(newItem) + currentHistory).take(3)
     }
 
     // Mantemos estado interno apenas de referência para evitar buscas custosas a todo instante se desnecessário.
@@ -126,6 +128,28 @@ class PickingViewModel @Inject constructor(
             is PickingEvent.OnDebugScan -> handleDebugScan(event.barcode)
             is PickingEvent.OnAdvanceToNextItem -> handleAdvanceToNextItem()
             is PickingEvent.OnResumeBoxConfirmed -> handleResumeBoxConfirmed()
+            is PickingEvent.OnManualInput -> {
+                when (val state = _uiState.value) {
+                    is PickingUiState.Idle -> handlePapeletaScanned(event.code)
+                    is PickingUiState.Error -> {
+                        if (state.message.contains("papeleta", ignoreCase = true)) {
+                            handlePapeletaScanned(event.code)
+                        }
+                    }
+                    is PickingUiState.Collecting -> {
+                        when (state.addressConfirmation) {
+                            br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending -> {
+                                handleAddressScan(event.code)
+                            }
+                            br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Confirmed -> {
+                                handlePieceScan(event.code, isManual = true)
+                            }
+                            else -> {}
+                        }
+                    }
+                    else -> {}
+                }
+            }
         }
     }
 
@@ -282,7 +306,7 @@ class PickingViewModel @Inject constructor(
         }
     }
 
-    private fun handlePieceScan(barcode: String) {
+    private fun handlePieceScan(barcode: String, isManual: Boolean = false) {
         val currentState = _uiState.value
         if (currentState !is PickingUiState.Collecting) return
 
@@ -293,7 +317,7 @@ class PickingViewModel @Inject constructor(
                         is ScanResult.Success -> {
                             scanFeedbackManager.scanPartialSuccess()
                             
-                            val updatedHistory = buildUpdatedHistory(currentState.lastScannedItems, barcode)
+                            val updatedHistory = buildUpdatedHistory(currentState.lastScannedItems, barcode, isManual)
                             
                             _uiState.value = currentState.copy(
                                 currentItem = result.item,

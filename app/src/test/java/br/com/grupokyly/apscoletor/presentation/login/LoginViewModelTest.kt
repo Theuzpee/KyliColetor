@@ -40,7 +40,7 @@ class LoginViewModelTest {
 
         viewModel = LoginViewModel(
             loginUseCase = LoginUseCase(fakeAuthRepo),
-            dataWedgeReceiver = fakeReceiver,
+            scannerReceiver = fakeReceiver,
             scanFeedbackManager = fakeFeedback
         )
     }

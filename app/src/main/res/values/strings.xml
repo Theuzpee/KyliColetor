@@ -99,4 +99,14 @@
     <string name="item_coletado">✓ coletado</string>
     <string name="item_pendente">pendente</string>
     <string name="label_minutos">%1$d min</string>
+
+    <!-- Entrada Manual -->
+    <string name="btn_manual_input">Código danificado? Digitar manualmente</string>
+    <string name="manual_input_title">Código danificado?</string>
+    <string name="manual_input_hint">Digite o código manualmente</string>
+    <string name="manual_input_label">Código de barras</string>
+    <string name="manual_input_warning">Entrada manual será registrada para rastreabilidade</string>
+    <string name="manual_input_confirm">Confirmar</string>
+    <string name="manual_input_cancel">Cancelar</string>
+    <string name="manual_input_error">Digite um código válido</string>
 </resources>

@@ -3,29 +3,29 @@ package br.com.grupokyly.apscoletor.data.repository
 import br.com.grupokyly.apscoletor.data.local.dao.BoxDao
 import br.com.grupokyly.apscoletor.data.local.dao.PickingItemDao
 import br.com.grupokyly.apscoletor.data.local.dao.ScannedPieceDao
-import br.com.grupokyly.apscoletor.test.fake.FakeSyncScheduler
-import br.com.grupokyly.apscoletor.test.fake.fakeBox
+import br.com.grupokyly.apscoletor.data.local.dao.DivergenceDao
+import br.com.grupokyly.apscoletor.data.remote.RemoteDataSource
+import br.com.grupokyly.apscoletor.data.sync.SyncScheduler
 import br.com.grupokyly.apscoletor.test.fake.fakeBoxEntity
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Test
-import androidx.test.core.app.ApplicationProvider
-import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
 
-@RunWith(RobolectricTestRunner::class)
 class PickingRepositoryImplSyncTest {
 
     private lateinit var boxDao: BoxDao
     private lateinit var pickingItemDao: PickingItemDao
     private lateinit var scannedPieceDao: ScannedPieceDao
-    private lateinit var fakeSyncScheduler: FakeSyncScheduler
+    private lateinit var divergenceDao: DivergenceDao
+    private lateinit var remoteDataSource: RemoteDataSource
+    private lateinit var syncScheduler: SyncScheduler
     private lateinit var repository: PickingRepositoryImpl
 
     private val testDispatcher = StandardTestDispatcher()
@@ -35,46 +35,49 @@ class PickingRepositoryImplSyncTest {
         boxDao = mockk(relaxed = true)
         pickingItemDao = mockk(relaxed = true)
         scannedPieceDao = mockk(relaxed = true)
-        // Pass a mock context or application provider context since Robolectric is used
-        fakeSyncScheduler = FakeSyncScheduler(ApplicationProvider.getApplicationContext())
+        divergenceDao = mockk(relaxed = true)
+        remoteDataSource = mockk(relaxed = true)
+        syncScheduler = mockk(relaxed = true)
 
         repository = PickingRepositoryImpl(
             boxDao = boxDao,
             pickingItemDao = pickingItemDao,
             scannedPieceDao = scannedPieceDao,
+            divergenceDao = divergenceDao,
             dispatcher = testDispatcher,
-            syncScheduler = fakeSyncScheduler
+            syncScheduler = syncScheduler,
+            remoteDataSource = remoteDataSource
         )
     }
 
     @Test
-    fun `finalizeBox schedules sync on success`() = runTest(testDispatcher) {
+    fun `finalizeBox schedules sync on success`() = runTest {
         val fakeBoxEntity = fakeBoxEntity()
-        every { boxDao.getBoxById(1L) } returns fakeBoxEntity
+        coEvery { boxDao.getBoxById(1L) } returns fakeBoxEntity
         every { pickingItemDao.getItemsByBox(1L) } returns flowOf(emptyList())
 
         repository.finalizeBox(boxId = 1L)
 
-        assertEquals(1, fakeSyncScheduler.scheduleCount)
+        verify(exactly = 1) { syncScheduler.scheduleSync() }
     }
 
     @Test
-    fun `savePartialBox schedules sync on success`() = runTest(testDispatcher) {
+    fun `savePartialBox schedules sync on success`() = runTest {
         val fakeBoxEntity = fakeBoxEntity()
-        every { boxDao.getBoxById(1L) } returns fakeBoxEntity
+        coEvery { boxDao.getBoxById(1L) } returns fakeBoxEntity
 
         repository.savePartialBox(boxId = 1L)
 
-        assertEquals(1, fakeSyncScheduler.scheduleCount)
+        verify(exactly = 1) { syncScheduler.scheduleSync() }
     }
 
     @Test
-    fun `finalizeBox does not schedule sync on failure`() = runTest(testDispatcher) {
-        every { boxDao.getBoxById(1L) } throws Exception("Banco corrompido")
+    fun `finalizeBox does not schedule sync on failure`() = runTest {
+        coEvery { boxDao.getBoxById(1L) } throws Exception("Banco corrompido")
 
         val result = repository.finalizeBox(boxId = 1L)
 
-        assertEquals(0, fakeSyncScheduler.scheduleCount)
+        verify(exactly = 0) { syncScheduler.scheduleSync() }
         assertEquals(true, result.isFailure)
     }
 }

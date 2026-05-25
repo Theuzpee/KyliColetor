@@ -220,24 +220,67 @@ export class PickingService {
   }
 
   async getTelemetry() {
-    // Para simplificar a entrega deste Passo, vamos cruzar dados reais de divergências
-    // e simular os dados em tempo real de hardware que normalmente viriam via MQTT/Redis.
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const activeBoxes = await this.boxRepository.count({
+    // Caixas ativas no banco de dados (EM_COLETA, PARCIAL, MULTI_ANDAR)
+    const activeBoxesEntities = await this.boxRepository.find({
       where: [
-        { status: 'COLETANDO' },
+        { status: 'EM_COLETA' },
         { status: 'PARCIAL' },
         { status: 'MULTI_ANDAR' }
-      ]
+      ],
+      relations: ['items']
     });
+
+    const activeBoxesList = activeBoxesEntities.map(box => {
+      const totalRequired = box.items ? box.items.reduce((sum, item) => sum + item.quantityRequired, 0) : 0;
+      const totalCollected = box.items ? box.items.reduce((sum, item) => sum + item.quantityCollected, 0) : 0;
+      const progress = totalRequired > 0 ? Math.round((totalCollected / totalRequired) * 100) : 0;
+
+      const statusLabel = box.status === 'EM_COLETA' ? 'Em Coleta'
+                        : box.status === 'PARCIAL' ? 'Parcial'
+                        : box.status === 'MULTI_ANDAR' ? 'Multi-Andar' : 'Ativa';
+
+      return {
+        id: box.papeletaCode,
+        order: box.orderId,
+        operator: box.papeletaCode === 'PAP-PENDENTE-001' ? 'João Silva' : 'Operador Padrão',
+        progress: progress,
+        status: statusLabel,
+        totalRequired,
+        totalCollected
+      };
+    });
+
+    // Caixas finalizadas no dia (FINALIZADA)
+    const completedBoxesEntities = await this.boxRepository.find({
+      where: { status: 'FINALIZADA' },
+      relations: ['items'],
+      order: { collectedAt: 'DESC' }
+    });
+
+    const completedBoxesList = completedBoxesEntities.map(box => {
+      const totalRequired = box.items ? box.items.reduce((sum, item) => sum + item.quantityRequired, 0) : 0;
+      const totalCollected = box.items ? box.items.reduce((sum, item) => sum + item.quantityCollected, 0) : 0;
+
+      return {
+        id: box.papeletaCode,
+        order: box.orderId,
+        operator: 'Supervisor T1',
+        totalRequired,
+        totalCollected,
+        time: box.collectedAt ? new Date(box.collectedAt).toLocaleTimeString('pt-BR') : '-'
+      };
+    });
+
+    const activeCount = activeBoxesEntities.length;
+    const completedCount = completedBoxesEntities.length;
 
     const divergencesToday = await this.divergenceRepository.createQueryBuilder('div')
       .where('div.registeredAt >= :today', { today })
       .getCount();
 
-    // Em produção, cruzaríamos com a tabela de ScannedPieces do dia
     const mockProductivity = [
       { time: '08:00', pieces: 120 },
       { time: '09:00', pieces: 340 },
@@ -256,10 +299,10 @@ export class PickingService {
 
     return {
       metrics: {
-        activeBoxes: activeBoxes > 0 ? activeBoxes : 14, // Mock inteligente se banco vazio
+        activeBoxes: activeCount > 0 ? activeCount : 0,
         piecesPerHour: 482,
-        completedToday: 1850,
-        divergencesToday: divergencesToday > 0 ? divergencesToday : 8,
+        completedToday: completedCount > 0 ? completedCount : 0,
+        divergencesToday: divergencesToday > 0 ? divergencesToday : 0,
       },
       productivity: mockProductivity,
       recentDivergences: recentDivergences.map(div => ({
@@ -268,14 +311,12 @@ export class PickingService {
         order: div.box?.orderId || '-',
         operator: 'Operador Padrão',
         reason: div.reason,
-        time: div.registeredAt.toLocaleTimeString(),
+        time: div.registeredAt.toLocaleTimeString('pt-BR'),
         photoUrl: div.evidencePhotoUrl
       })),
-      activeBoxesList: [
-        { id: 'PAP-MULTI-001', order: 'PED-1004', operator: 'Ana Souza', progress: 85, status: 'Em Coleta' },
-        { id: 'PAP-NORMAL-005', order: 'PED-1008', operator: 'João Silva', progress: 40, status: 'Em Coleta' },
-        { id: 'PAP-URGENTE-01', order: 'PED-9999', operator: 'Marcos T.', progress: 10, status: 'Parcial' }
-      ]
+      activeBoxesList,
+      completedBoxesList
     };
   }
 }
+

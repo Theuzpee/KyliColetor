@@ -104,5 +104,5 @@ fun fakeLoginResponseDto() = LoginResponseDto(
     operatorCode = "EMP001",
     supervisorName = "Supervisor T1",
     shift = "TURNO_1",
-    expiresAt = "2025-01-01T22:00:00Z"
+    expiresAt = "2035-01-01T22:00:00Z"
 )

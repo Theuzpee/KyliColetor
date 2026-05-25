@@ -32,14 +32,14 @@ class RegisterDivergenceUseCaseTest {
         var itemStatusChanged = false
 
         coEvery {
-            mockRepo.registerDivergence(any(), any(), any(), any())
+            mockRepo.registerDivergence(any(), any(), any(), any(), any())
         } returns Result.success(Unit)
 
         // No PickingRepository não existe método independente de updateItemStatus.
         // Se houvesse algum efeito colateral como registerScan(), nós validaríamos.
         // O repositório real sabe que não altera status, então verificamos se registerScan não foi chamado.
         coEvery {
-            mockRepo.registerScan(any(), any(), any())
+            mockRepo.registerScan(any(), any())
         } answers {
             itemStatusChanged = true
             Result.success(mockk())
@@ -57,7 +57,7 @@ class RegisterDivergenceUseCaseTest {
 
         assertTrue(result.isSuccess)
         assertFalse(itemStatusChanged)
-        coVerify(exactly = 0) { mockRepo.registerScan(any(), any(), any()) }
+        coVerify(exactly = 0) { mockRepo.registerScan(any(), any()) }
         coVerify(exactly = 0) { mockRepo.skipItem(any(), any(), any()) }
     }
 
@@ -90,7 +90,7 @@ class RegisterDivergenceUseCaseTest {
         defectReasons.forEach { reason ->
             val useCase = RegisterDivergenceUseCase(FakePickingRepository())
             val result = useCase(1L, 1L, null, reason)
-            assertTrue(result.isSuccess, "Falhou para reason: $reason")
+            assertTrue("Falhou para reason: $reason", result.isSuccess)
         }
     }
 }

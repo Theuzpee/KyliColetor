@@ -10,16 +10,39 @@ import br.com.grupokyly.apscoletor.BuildConfig
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-open class ScannerReceiver @Inject constructor() {
+open class ScannerReceiver @Inject constructor(
+    private val cameraScanner: CameraScanner?
+) {
+
+    constructor() : this(null)
 
     private val _scannedDataFlow = MutableSharedFlow<String>(
         extraBufferCapacity = 10
     )
     open val scannedDataFlow: SharedFlow<String> = _scannedDataFlow.asSharedFlow()
+
+    init {
+        cameraScanner?.let { scanner ->
+            val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+            mergeWithCameraFlow(scope)
+        }
+    }
+
+    fun mergeWithCameraFlow(scope: CoroutineScope) {
+        scope.launch {
+            cameraScanner?.scannedDataFlow?.collect { barcode ->
+                _scannedDataFlow.tryEmit(barcode)
+            }
+        }
+    }
 
     private var isRegistered = false
 

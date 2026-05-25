@@ -10,6 +10,8 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,7 +35,8 @@ fun CollectingContent(
     onFinalize: () -> Unit,
     onSavePartial: () -> Unit,
     onSaveMultiFloor: () -> Unit,
-    onSkipRequest: () -> Unit
+    onSkipRequest: () -> Unit,
+    onManualInput: (String) -> Unit
 ) {
     val progress = if (state.currentItem.quantityRequired > 0) {
         state.collectedCount.toFloat() / state.currentItem.quantityRequired.toFloat()
@@ -156,6 +159,96 @@ fun CollectingContent(
                 color = SuccessGreen,
                 trackColor = Color(0xFF222222)
             )
+
+            // BOTÃO DE DIGITAÇÃO MANUAL
+            Spacer(modifier = Modifier.height(8.dp))
+            var showManualInput by remember { mutableStateOf(false) }
+            TextButton(
+                onClick = { showManualInput = true },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Edit,
+                    contentDescription = null,
+                    tint = TextSecondary,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = stringResource(R.string.btn_manual_input),
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+            }
+
+            if (showManualInput) {
+                br.com.grupokyly.apscoletor.presentation.components.ManualInputBottomSheet(
+                    onDismiss = { showManualInput = false },
+                    onConfirm = { code ->
+                        onManualInput(code)
+                    },
+                    title = when (state.addressConfirmation) {
+                        AddressConfirmationState.Pending -> "Código do endereço danificado?"
+                        AddressConfirmationState.Confirmed -> "Código da peça danificado?"
+                        else -> "Código danificado?"
+                    },
+                    hint = when (state.addressConfirmation) {
+                        AddressConfirmationState.Pending -> "Digite o endereço do corredor"
+                        AddressConfirmationState.Confirmed -> "Digite o código da peça"
+                        else -> "Digite o código manualmente"
+                    }
+                )
+            }
+
+            // 4. HISTÓRICO DE LEITURAS VISUAL (Rastreabilidade)
+            if (state.lastScannedItems.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(24.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF141414), RoundedCornerShape(8.dp))
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.last_reads),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF666666),
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    state.lastScannedItems.forEach { read ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (read.isManual) Icons.Default.Edit else Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = if (read.isManual) WarningOrange else SuccessGreen,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = read.barcode,
+                                    fontSize = 14.sp,
+                                    fontFamily = FontFamily.Monospace,
+                                    color = Color.White
+                                )
+                            }
+                            Text(
+                                text = read.time,
+                                fontSize = 12.sp,
+                                color = Color(0xFF666666)
+                            )
+                        }
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.weight(1f))

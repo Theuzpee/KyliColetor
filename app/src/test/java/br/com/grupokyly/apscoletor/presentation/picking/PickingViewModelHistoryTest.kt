@@ -55,6 +55,7 @@ class PickingViewModelHistoryTest {
 
         io.mockk.every { fakeGetBoxItems(any()) } answers { kotlinx.coroutines.flow.flowOf(fakeRepository.getBoxItemsResult) }
         io.mockk.every { fakeSessionManager.sessionFlow } returns kotlinx.coroutines.flow.flowOf(null)
+        io.mockk.every { fakeValidateAddress(any(), any()) } returns true
 
         viewModel = PickingViewModel(
             openBoxUseCase = fakeOpenBox,
@@ -178,5 +179,28 @@ class PickingViewModelHistoryTest {
         if (state is PickingUiState.Collecting) {
             assertTrue(state.lastScannedItems.any { it.barcode == "PECA-COMPLETA" })
         }
+    }
+
+    @Test
+    fun `valid manual input adds item to top of history with isManual equal to true`() = runTest {
+        viewModel.onEvent(PickingEvent.OnPapeletaScanned("PAP123"))
+        advanceUntilIdle()
+        assertIs<PickingUiState.Collecting>(viewModel.uiState.value)
+
+        val state = viewModel.uiState.value as PickingUiState.Collecting
+        viewModel.onEvent(PickingEvent.OnManualInput(state.currentItem.address))
+        advanceUntilIdle()
+
+        fakeRegisterScan.result = Result.success(ScanResult.Success(fakePickingItem()))
+
+        viewModel.onEvent(PickingEvent.OnManualInput("PECA-001"))
+        advanceUntilIdle()
+
+        val endState = viewModel.uiState.value
+        assertIs<PickingUiState.Collecting>(endState)
+        assertEquals(1, endState.lastScannedItems.size)
+        val lastItem = endState.lastScannedItems.first()
+        assertEquals("PECA-001", lastItem.barcode)
+        assertTrue(lastItem.isManual)
     }
 }

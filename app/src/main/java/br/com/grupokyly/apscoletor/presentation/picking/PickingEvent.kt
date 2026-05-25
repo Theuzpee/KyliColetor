@@ -17,4 +17,5 @@ sealed class PickingEvent {
     data class OnSkipItem(val reason: SkipReason) : PickingEvent()
     data class OnRegisterDivergence(val barcode: String?, val reason: SkipReason, val evidencePhotoUrl: String?) : PickingEvent()
     data class OnDebugScan(val barcode: String) : PickingEvent()
+    data class OnManualInput(val code: String) : PickingEvent()
 }

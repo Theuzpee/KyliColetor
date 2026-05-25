@@ -18,10 +18,15 @@ import br.com.grupokyly.apscoletor.presentation.picking.components.CollectingCon
 import br.com.grupokyly.apscoletor.presentation.picking.components.ErrorBanner
 import br.com.grupokyly.apscoletor.presentation.picking.components.IdleContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.ItemCompleteContent
+import br.com.grupokyly.apscoletor.BuildConfig
+import br.com.grupokyly.apscoletor.presentation.scanner.CameraScannerScreen
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import br.com.grupokyly.apscoletor.presentation.picking.components.LoadingContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.ItemSkippedContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.SkipItemBottomSheet
 import br.com.grupokyly.apscoletor.presentation.picking.components.DebugScannerComponent
+import br.com.grupokyly.apscoletor.presentation.components.ManualInputBottomSheet
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import br.com.grupokyly.apscoletor.domain.model.SkipReason
@@ -55,8 +60,12 @@ fun PickingScreen(
 
     var showSkipSheet by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var pendingDivergenceReason by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<SkipReason?>(null) }
+    var showCameraScanner by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showManualPapeleta by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
 
+
+    var showManualInputAfterDivergence by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
 
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
         val reason = pendingDivergenceReason
@@ -64,6 +73,10 @@ fun PickingScreen(
             // Para a apresentação, vamos simular que fizemos upload da imagem e temos a URL
             val mockPhotoUrl = "https://storage.googleapis.com/kyly-evidence/divergences/photo_${System.currentTimeMillis()}.jpg"
             viewModel.onEvent(PickingEvent.OnRegisterDivergence(barcode = null, reason = reason, evidencePhotoUrl = mockPhotoUrl))
+            
+            if (reason == br.com.grupokyly.apscoletor.domain.model.SkipReason.NAO_LE_CODIGO) {
+                showManualInputAfterDivergence = true
+            }
         }
         pendingDivergenceReason = null
     }
@@ -77,7 +90,24 @@ fun PickingScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (val state = uiState) {
-            is PickingUiState.Idle -> IdleContent()
+            is PickingUiState.Idle -> {
+                IdleContent(onManualClick = { showManualPapeleta = true })
+                if (!BuildConfig.IS_DATALOGIC_DEVICE) {
+                    androidx.compose.material3.FloatingActionButton(
+                        onClick = { showCameraScanner = true },
+                        containerColor = br.com.grupokyly.apscoletor.presentation.theme.PrimaryYellow,
+                        contentColor = Color.Black,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 16.dp, bottom = 80.dp)
+                    ) {
+                        androidx.compose.material3.Icon(
+                            imageVector = Icons.Default.CameraAlt,
+                            contentDescription = "Escanear com a câmera"
+                        )
+                    }
+                }
+            }
             is PickingUiState.LoadingBox -> LoadingContent()
             is PickingUiState.BoxResuming -> {
                 br.com.grupokyly.apscoletor.presentation.picking.components.BoxResumeTimelineContent(
@@ -92,7 +122,8 @@ fun PickingScreen(
                     onFinalize = { viewModel.onEvent(PickingEvent.OnFinalizeBox) },
                     onSavePartial = { viewModel.onEvent(PickingEvent.OnSavePartial) },
                     onSaveMultiFloor = { viewModel.onEvent(PickingEvent.OnSaveMultiFloor) },
-                    onSkipRequest = { showSkipSheet = true }
+                    onSkipRequest = { showSkipSheet = true },
+                    onManualInput = { code -> viewModel.onEvent(PickingEvent.OnManualInput(code)) }
                 )
             }
             is PickingUiState.ItemComplete -> {
@@ -129,9 +160,10 @@ fun PickingScreen(
                         onFinalize = { },
                         onSavePartial = { },
                         onSaveMultiFloor = { },
-                        onSkipRequest = { showSkipSheet = true }
+                        onSkipRequest = { showSkipSheet = true },
+                        onManualInput = { }
                     )
-                } ?: IdleContent()
+                } ?: IdleContent(onManualClick = { showManualPapeleta = true })
                 
                 Box(modifier = Modifier.align(Alignment.TopCenter)) {
                     ErrorBanner(message = state.message)
@@ -162,6 +194,39 @@ fun PickingScreen(
             }
         )
 
+        if (showCameraScanner) {
+            CameraScannerScreen(
+                onBarcodeDetected = { barcode ->
+                    viewModel.onEvent(PickingEvent.OnPapeletaScanned(barcode))
+                    showCameraScanner = false
+                },
+                onDismiss = { showCameraScanner = false }
+            )
+        }
 
+        if (showManualPapeleta) {
+            ManualInputBottomSheet(
+                onDismiss = { showManualPapeleta = false },
+                onConfirm = { code ->
+                    viewModel.onEvent(PickingEvent.OnPapeletaScanned(code))
+                },
+                title = "Papeleta danificada?",
+                hint = "Digite o código da papeleta",
+                label = "Código da papeleta"
+            )
+        }
+
+        if (showManualInputAfterDivergence) {
+            ManualInputBottomSheet(
+                onDismiss = { showManualInputAfterDivergence = false },
+                onConfirm = { code ->
+                    viewModel.onEvent(PickingEvent.OnManualInput(code))
+                    showManualInputAfterDivergence = false
+                },
+                title = "Tentar digitar o código?",
+                hint = "Se souber o código da peça, tente digitá-lo",
+                label = "Código da peça"
+            )
+        }
     }
 }

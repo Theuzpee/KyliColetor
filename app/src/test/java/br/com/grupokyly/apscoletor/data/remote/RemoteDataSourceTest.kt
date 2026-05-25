@@ -1,7 +1,7 @@
 package br.com.grupokyly.apscoletor.data.remote
 
 import br.com.grupokyly.apscoletor.data.remote.api.PickingApiService
-import br.com.grupokyly.apscoletor.data.remote.dto.fakeSyncBoxRequestDto
+import br.com.grupokyly.apscoletor.test.fake.fakeSyncBoxRequestDto
 import br.com.grupokyly.apscoletor.test.fake.fakeSyncResponse
 import io.mockk.coEvery
 import io.mockk.mockk

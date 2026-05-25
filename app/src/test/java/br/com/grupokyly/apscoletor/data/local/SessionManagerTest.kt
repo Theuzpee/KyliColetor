@@ -11,7 +11,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
-import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -23,54 +22,51 @@ class SessionManagerTest {
     @get:Rule
     val tempFolder = TemporaryFolder()
 
-    private val testScope = TestScope()
-    private lateinit var sessionManager: SessionManager
-
-    @Before
-    fun setup() {
+    private fun runSessionTest(block: suspend TestScope.(SessionManager) -> Unit) = runTest {
         val dataStore = PreferenceDataStoreFactory.create(
-            scope = testScope,
-            produceFile = { tempFolder.newFile("test_session.preferences_pb") }
+            scope = this,
+            produceFile = { tempFolder.newFile("test_session_${System.nanoTime()}.preferences_pb") }
         )
-        sessionManager = SessionManager(dataStore)
+        val manager = SessionManager(dataStore)
+        block(manager)
     }
 
     @Test
-    fun `saveSession stores token and can be retrieved`() = testScope.runTest {
-        sessionManager.saveSession(fakeLoginResponseDto())
+    fun `saveSession stores token and can be retrieved`() = runSessionTest { manager ->
+        manager.saveSession(fakeLoginResponseDto())
 
-        val token = sessionManager.getToken()
+        val token = manager.getToken()
         assertEquals("fake.jwt.token", token)
     }
 
     @Test
-    fun `isSessionValid returns false when token is expired`() = testScope.runTest {
+    fun `isSessionValid returns false when token is expired`() = runSessionTest { manager ->
         val expiredResponse = fakeLoginResponseDto().copy(
             expiresAt = Instant.now().minusSeconds(3600).toString()
         )
-        sessionManager.saveSession(expiredResponse)
+        manager.saveSession(expiredResponse)
 
-        assertFalse(sessionManager.isSessionValid())
+        assertFalse(manager.isSessionValid())
     }
 
     @Test
-    fun `isSessionValid returns false when no token saved`() = testScope.runTest {
-        assertFalse(sessionManager.isSessionValid())
+    fun `isSessionValid returns false when no token saved`() = runSessionTest { manager ->
+        assertFalse(manager.isSessionValid())
     }
 
     @Test
-    fun `clearSession removes all stored data`() = testScope.runTest {
-        sessionManager.saveSession(fakeLoginResponseDto())
-        assertNotNull(sessionManager.getToken())
+    fun `clearSession removes all stored data`() = runSessionTest { manager ->
+        manager.saveSession(fakeLoginResponseDto())
+        assertNotNull(manager.getToken())
 
-        sessionManager.clearSession()
+        manager.clearSession()
 
-        assertNull(sessionManager.getToken())
-        assertFalse(sessionManager.isSessionValid())
+        assertNull(manager.getToken())
+        assertFalse(manager.isSessionValid())
     }
 
     @Test
-    fun `CheckSessionUseCase returns false when session invalid`() = testScope.runTest {
+    fun `CheckSessionUseCase returns false when session invalid`() = runTest {
         val fakeRepo = FakeAuthRepository().apply {
             isAuthenticatedResult = false
         }
