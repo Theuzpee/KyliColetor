@@ -11,6 +11,7 @@ import { ScannedPiece } from './entities/scanned-piece.entity';
 import { DivergenceEntity } from './entities/divergence.entity';
 import { SyncBoxRequestDto } from './dto/sync-box.dto';
 import { SyncBoxResponseDto } from './dto/sync-box-response.dto';
+import { CreateBoxDto } from './dto/create-box.dto';
 
 @Injectable()
 export class PickingService {
@@ -84,6 +85,47 @@ export class PickingService {
     return {
       syncId: savedBox.id,
       syncedAt: savedBox.syncedAt,
+    };
+  }
+
+  async createBox(dto: CreateBoxDto): Promise<{ id: string; papeletaCode: string; status: string; itemCount: number }> {
+    // Verifica se já existe caixa com o mesmo código
+    const existing = await this.boxRepository.findOne({ where: { papeletaCode: dto.papeletaCode } });
+    if (existing) {
+      throw new ConflictException({
+        error: 'Caixa já cadastrada com este código de papeleta',
+        existingId: existing.id,
+      });
+    }
+
+    const box = new Box();
+    box.papeletaCode = dto.papeletaCode;
+    box.orderId = dto.orderId;
+    box.status = 'EM_COLETA';
+    box.collectedAt = undefined as unknown as Date;
+    box.syncedAt = undefined as unknown as Date;
+
+    box.items = dto.items.map((itemDto) => {
+      const item = new PickingItem();
+      item.reference = itemDto.reference;
+      item.color = itemDto.color;
+      item.size = itemDto.size;
+      item.address = itemDto.address;
+      item.quantityRequired = itemDto.quantityRequired;
+      item.quantityCollected = 0;
+      item.status = 'PENDENTE';
+      item.scannedPieces = [];
+      return item;
+    });
+
+    box.divergences = [];
+
+    const saved = await this.boxRepository.save(box);
+    return {
+      id: saved.id,
+      papeletaCode: saved.papeletaCode,
+      status: saved.status,
+      itemCount: saved.items.length,
     };
   }
 

@@ -2,8 +2,12 @@ package br.com.grupokyly.apscoletor.presentation.picking
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -11,6 +15,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.unit.dp
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxFinalizedContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxPartialContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxMultiFloorContent
@@ -18,33 +25,16 @@ import br.com.grupokyly.apscoletor.presentation.picking.components.CollectingCon
 import br.com.grupokyly.apscoletor.presentation.picking.components.ErrorBanner
 import br.com.grupokyly.apscoletor.presentation.picking.components.IdleContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.ItemCompleteContent
-import br.com.grupokyly.apscoletor.BuildConfig
 import br.com.grupokyly.apscoletor.presentation.scanner.CameraScannerScreen
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CameraAlt
 import br.com.grupokyly.apscoletor.presentation.picking.components.LoadingContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.ItemSkippedContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.SkipItemBottomSheet
-import br.com.grupokyly.apscoletor.presentation.picking.components.DebugScannerComponent
+import br.com.grupokyly.apscoletor.presentation.picking.components.BoxResumeTimelineContent
 import br.com.grupokyly.apscoletor.presentation.components.ManualInputBottomSheet
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import br.com.grupokyly.apscoletor.domain.model.SkipReason
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import br.com.grupokyly.apscoletor.presentation.theme.PrimaryYellow
 
 @Composable
 fun PickingScreen(
@@ -52,29 +42,34 @@ fun PickingScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current.applicationContext
-    
-    // Remember the last collecting state to render beneath the error banner
-    var lastCollectingState by androidx.compose.runtime.remember { 
-        androidx.compose.runtime.mutableStateOf<PickingUiState.Collecting?>(null) 
+
+    // Mantém o último estado de coleta para renderizar abaixo do banner de erro
+    var lastCollectingState by remember {
+        mutableStateOf<PickingUiState.Collecting?>(null)
     }
 
-    var showSkipSheet by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var pendingDivergenceReason by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<SkipReason?>(null) }
-    var showCameraScanner by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-    var showManualPapeleta by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var showSkipSheet             by remember { mutableStateOf(false) }
+    var pendingDivergenceReason   by remember { mutableStateOf<SkipReason?>(null) }
+    // showCameraScanner: modo de uso — "papeleta" ou "peca"
+    var showCameraScanner         by remember { mutableStateOf(false) }
+    var cameraScannerMode         by remember { mutableStateOf("papeleta") }
+    var showManualInputAfterDivergence by remember { mutableStateOf(false) }
 
-
-
-    var showManualInputAfterDivergence by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-
-    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) { bitmap ->
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap ->
         val reason = pendingDivergenceReason
         if (bitmap != null && reason != null) {
-            // Para a apresentação, vamos simular que fizemos upload da imagem e temos a URL
-            val mockPhotoUrl = "https://storage.googleapis.com/kyly-evidence/divergences/photo_${System.currentTimeMillis()}.jpg"
-            viewModel.onEvent(PickingEvent.OnRegisterDivergence(barcode = null, reason = reason, evidencePhotoUrl = mockPhotoUrl))
-            
-            if (reason == br.com.grupokyly.apscoletor.domain.model.SkipReason.NAO_LE_CODIGO) {
+            val mockPhotoUrl =
+                "https://storage.googleapis.com/kyly-evidence/divergences/photo_${System.currentTimeMillis()}.jpg"
+            viewModel.onEvent(
+                PickingEvent.OnRegisterDivergence(
+                    barcode = null,
+                    reason = reason,
+                    evidencePhotoUrl = mockPhotoUrl
+                )
+            )
+            if (reason == SkipReason.NAO_LE_CODIGO) {
                 showManualInputAfterDivergence = true
             }
         }
@@ -89,88 +84,107 @@ fun PickingScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
+
+        // ── Conteúdo principal por estado ────────────────────────────────────
         when (val state = uiState) {
             is PickingUiState.Idle -> {
-                IdleContent(onManualClick = { showManualPapeleta = true })
-                if (!BuildConfig.IS_DATALOGIC_DEVICE) {
-                    androidx.compose.material3.FloatingActionButton(
-                        onClick = { showCameraScanner = true },
-                        containerColor = br.com.grupokyly.apscoletor.presentation.theme.PrimaryYellow,
-                        contentColor = Color.Black,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 16.dp, bottom = 80.dp)
-                    ) {
-                        androidx.compose.material3.Icon(
-                            imageVector = Icons.Default.CameraAlt,
-                            contentDescription = "Escanear com a câmera"
-                        )
-                    }
+                IdleContent(onManualClick = {
+                    cameraScannerMode = "papeleta"
+                    showCameraScanner = true
+                })
+                // FAB de câmera — abre o scanner ao toque
+                androidx.compose.material3.FloatingActionButton(
+                    onClick = {
+                        cameraScannerMode = "papeleta"
+                        showCameraScanner = true
+                    },
+                    containerColor = PrimaryYellow,
+                    contentColor = androidx.compose.ui.graphics.Color.Black,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 16.dp, bottom = 80.dp)
+                ) {
+                    androidx.compose.material3.Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = "Escanear com a câmera"
+                    )
                 }
             }
+
             is PickingUiState.LoadingBox -> LoadingContent()
+
             is PickingUiState.BoxResuming -> {
-                br.com.grupokyly.apscoletor.presentation.picking.components.BoxResumeTimelineContent(
+                BoxResumeTimelineContent(
                     state = state,
                     onResumeConfirmed = { viewModel.onEvent(PickingEvent.OnResumeBoxConfirmed) }
                 )
             }
+
             is PickingUiState.Collecting -> {
                 lastCollectingState = state
                 CollectingContent(
                     state = state,
-                    onFinalize = { viewModel.onEvent(PickingEvent.OnFinalizeBox) },
-                    onSavePartial = { viewModel.onEvent(PickingEvent.OnSavePartial) },
+                    onFinalize      = { viewModel.onEvent(PickingEvent.OnFinalizeBox) },
+                    onSavePartial   = { viewModel.onEvent(PickingEvent.OnSavePartial) },
                     onSaveMultiFloor = { viewModel.onEvent(PickingEvent.OnSaveMultiFloor) },
-                    onSkipRequest = { showSkipSheet = true },
-                    onManualInput = { code -> viewModel.onEvent(PickingEvent.OnManualInput(code)) }
+                    onSkipRequest   = { showSkipSheet = true },
+                    onManualInput   = { code -> viewModel.onEvent(PickingEvent.OnManualInput(code)) }
                 )
             }
+
             is PickingUiState.ItemComplete -> {
                 ItemCompleteContent(state)
-                androidx.compose.runtime.LaunchedEffect(state) {
+                LaunchedEffect(state) {
                     kotlinx.coroutines.delay(1500)
                     viewModel.onEvent(PickingEvent.OnAdvanceToNextItem)
                 }
             }
+
             is PickingUiState.ItemSkipped -> {
                 ItemSkippedContent(state)
-                androidx.compose.runtime.LaunchedEffect(state) {
+                LaunchedEffect(state) {
                     kotlinx.coroutines.delay(1500)
                     viewModel.onEvent(PickingEvent.OnAdvanceToNextItem)
                 }
             }
+
             is PickingUiState.BoxFinalized -> BoxFinalizedContent(
                 state = state,
-                onNewBox = { /* Idealmente reseta a viewmodel */ }
+                onNewBox = { /* reset via viewmodel */ }
             )
+
             is PickingUiState.BoxPartial -> BoxPartialContent(
                 state = state,
-                onNewBox = { /* Same as above */ }
+                onNewBox = { /* reset via viewmodel */ }
             )
+
             is PickingUiState.BoxMultiFloor -> BoxMultiFloorContent(
                 state = state,
-                onNewBox = { /* Same as above */ }
+                onNewBox = { /* reset via viewmodel */ }
             )
+
             is PickingUiState.Error -> {
-                // Mantém a tela de Collecting desenhada por baixo
                 lastCollectingState?.let {
                     CollectingContent(
                         state = it,
-                        onFinalize = { },
-                        onSavePartial = { },
+                        onFinalize       = { },
+                        onSavePartial    = { },
                         onSaveMultiFloor = { },
-                        onSkipRequest = { showSkipSheet = true },
-                        onManualInput = { }
+                        onSkipRequest    = { showSkipSheet = true },
+                        onManualInput    = { }
                     )
-                } ?: IdleContent(onManualClick = { showManualPapeleta = true })
-                
+                } ?: IdleContent(onManualClick = {
+                    cameraScannerMode = "papeleta"
+                    showCameraScanner = true
+                })
+
                 Box(modifier = Modifier.align(Alignment.TopCenter)) {
                     ErrorBanner(message = state.message)
                 }
             }
         }
 
+        // ── Bottom Sheet: item em falta / divergência ─────────────────────
         if (showSkipSheet) {
             SkipItemBottomSheet(
                 onDismissRequest = { showSkipSheet = false },
@@ -181,41 +195,42 @@ fun PickingScreen(
                 onRegisterDivergence = { reason ->
                     showSkipSheet = false
                     pendingDivergenceReason = reason
-                    cameraLauncher.launch(null) // Abre a câmera
+                    cameraLauncher.launch(null)
                 }
             )
         }
 
-        // Overlay do componente de debug no final da tela
-        DebugScannerComponent(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            onDebugScan = { barcode ->
-                viewModel.onEvent(PickingEvent.OnDebugScan(barcode))
-            }
-        )
-
+        // ── Scanner de câmera (modo papeleta ou peça) ─────────────────────
         if (showCameraScanner) {
+            val (title, hint, label) = when (cameraScannerMode) {
+                "peca" -> Triple(
+                    "Código da peça danificado?",
+                    "Digite o código da peça manualmente",
+                    "Código da peça"
+                )
+                else -> Triple(
+                    "Papeleta danificada?",
+                    "Digite o código da papeleta",
+                    "Código da papeleta"
+                )
+            }
             CameraScannerScreen(
                 onBarcodeDetected = { barcode ->
-                    viewModel.onEvent(PickingEvent.OnPapeletaScanned(barcode))
+                    if (cameraScannerMode == "peca") {
+                        viewModel.onEvent(PickingEvent.OnManualInput(barcode))
+                    } else {
+                        viewModel.onEvent(PickingEvent.OnPapeletaScanned(barcode))
+                    }
                     showCameraScanner = false
                 },
-                onDismiss = { showCameraScanner = false }
+                onDismiss = { showCameraScanner = false },
+                manualInputTitle = title,
+                manualInputHint  = hint,
+                manualInputLabel = label
             )
         }
 
-        if (showManualPapeleta) {
-            ManualInputBottomSheet(
-                onDismiss = { showManualPapeleta = false },
-                onConfirm = { code ->
-                    viewModel.onEvent(PickingEvent.OnPapeletaScanned(code))
-                },
-                title = "Papeleta danificada?",
-                hint = "Digite o código da papeleta",
-                label = "Código da papeleta"
-            )
-        }
-
+        // ── Manual input pós-divergência ──────────────────────────────────
         if (showManualInputAfterDivergence) {
             ManualInputBottomSheet(
                 onDismiss = { showManualInputAfterDivergence = false },
@@ -224,7 +239,7 @@ fun PickingScreen(
                     showManualInputAfterDivergence = false
                 },
                 title = "Tentar digitar o código?",
-                hint = "Se souber o código da peça, tente digitá-lo",
+                hint  = "Se souber o código da peça, tente digitá-lo",
                 label = "Código da peça"
             )
         }

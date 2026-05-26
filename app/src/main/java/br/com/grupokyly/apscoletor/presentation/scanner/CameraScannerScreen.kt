@@ -8,9 +8,11 @@ import androidx.camera.view.PreviewView
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,16 +22,21 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.core.content.ContextCompat
+import br.com.grupokyly.apscoletor.presentation.components.ManualInputBottomSheet
 
 @Composable
 fun CameraScannerScreen(
     onBarcodeDetected: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    manualInputTitle: String = "Papeleta danificada?",
+    manualInputHint: String = "Digite o código da papeleta",
+    manualInputLabel: String = "Código de barras"
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -42,6 +49,8 @@ fun CameraScannerScreen(
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
+
+    var showManualInput by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -73,7 +82,7 @@ fun CameraScannerScreen(
             .background(Color.Black)
     ) {
         if (hasCameraPermission) {
-            // Preview da câmera
+            // ── Preview da câmera (fundo completo) ──────────────────────────
             AndroidView(
                 factory = { ctx ->
                     PreviewView(ctx).also { previewView ->
@@ -83,87 +92,126 @@ fun CameraScannerScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Overlay de mira desenhado em cima
+            // ── Overlay escuro com janela de leitura ─────────────────────────
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val scanAreaSize = size.width * 0.7f
-                val left = (size.width - scanAreaSize) / 2
-                val top = (size.height - scanAreaSize) / 2
-                val scrimColor = Color.Black.copy(alpha = 0.6f)
+                val scanWidth  = size.width * 0.78f
+                val scanHeight = scanWidth * 0.48f          // proporção paisagem (barcode)
+                val left = (size.width  - scanWidth)  / 2f
+                val top  = (size.height - scanHeight) / 2f - size.height * 0.05f
+                val scrimColor = Color.Black.copy(alpha = 0.65f)
 
-                // 1. Retângulo Superior
-                drawRect(
-                    color = scrimColor,
-                    topLeft = Offset(0f, 0f),
-                    size = Size(size.width, top)
-                )
-                // 2. Retângulo Inferior
-                drawRect(
-                    color = scrimColor,
-                    topLeft = Offset(0f, top + scanAreaSize),
-                    size = Size(size.width, size.height - (top + scanAreaSize))
-                )
-                // 3. Retângulo Esquerdo (entre topo e rodapé)
-                drawRect(
-                    color = scrimColor,
-                    topLeft = Offset(0f, top),
-                    size = Size(left, scanAreaSize)
-                )
-                // 4. Retângulo Direito (entre topo e rodapé)
-                drawRect(
-                    color = scrimColor,
-                    topLeft = Offset(left + scanAreaSize, top),
-                    size = Size(size.width - (left + scanAreaSize), scanAreaSize)
-                )
+                // 4 sombras ao redor da janela
+                drawRect(scrimColor, Offset(0f, 0f),             Size(size.width, top))
+                drawRect(scrimColor, Offset(0f, top + scanHeight), Size(size.width, size.height - (top + scanHeight)))
+                drawRect(scrimColor, Offset(0f, top),             Size(left, scanHeight))
+                drawRect(scrimColor, Offset(left + scanWidth, top), Size(size.width - (left + scanWidth), scanHeight))
 
-                // Cantos amarelos
-                val cornerLen = 40f
-                val strokePx = 6f
-                val cornerColor = Color(0xFFFFD600)
+                // Cantos azuis (estilo referência)
+                val cornerLen = 52f
+                val stroke    = 7f
+                val blue      = Color(0xFF1E6FFF)
 
                 // Canto Superior Esquerdo
-                drawLine(cornerColor, Offset(left, top), Offset(left + cornerLen, top), strokePx)
-                drawLine(cornerColor, Offset(left, top), Offset(left, top + cornerLen), strokePx)
-
+                drawLine(blue, Offset(left, top),                        Offset(left + cornerLen, top),              stroke)
+                drawLine(blue, Offset(left, top),                        Offset(left, top + cornerLen),              stroke)
                 // Canto Superior Direito
-                drawLine(cornerColor, Offset(left + scanAreaSize, top), Offset(left + scanAreaSize - cornerLen, top), strokePx)
-                drawLine(cornerColor, Offset(left + scanAreaSize, top), Offset(left + scanAreaSize, top + cornerLen), strokePx)
-
+                drawLine(blue, Offset(left + scanWidth, top),            Offset(left + scanWidth - cornerLen, top),  stroke)
+                drawLine(blue, Offset(left + scanWidth, top),            Offset(left + scanWidth, top + cornerLen),  stroke)
                 // Canto Inferior Esquerdo
-                drawLine(cornerColor, Offset(left, top + scanAreaSize), Offset(left + cornerLen, top + scanAreaSize), strokePx)
-                drawLine(cornerColor, Offset(left, top + scanAreaSize), Offset(left, top + scanAreaSize - cornerLen), strokePx)
-
+                drawLine(blue, Offset(left, top + scanHeight),           Offset(left + cornerLen, top + scanHeight), stroke)
+                drawLine(blue, Offset(left, top + scanHeight),           Offset(left, top + scanHeight - cornerLen), stroke)
                 // Canto Inferior Direito
-                drawLine(cornerColor, Offset(left + scanAreaSize, top + scanAreaSize), Offset(left + scanAreaSize - cornerLen, top + scanAreaSize), strokePx)
-                drawLine(cornerColor, Offset(left + scanAreaSize, top + scanAreaSize), Offset(left + scanAreaSize, top + scanAreaSize - cornerLen), strokePx)
+                drawLine(blue, Offset(left + scanWidth, top + scanHeight), Offset(left + scanWidth - cornerLen, top + scanHeight), stroke)
+                drawLine(blue, Offset(left + scanWidth, top + scanHeight), Offset(left + scanWidth, top + scanHeight - cornerLen), stroke)
+
+                // Linha de scan animada (linha azul no centro)
+                drawRect(
+                    color = blue.copy(alpha = 0.6f),
+                    topLeft = Offset(left + 8f, top + scanHeight / 2f - 1.5f),
+                    size = Size(scanWidth - 16f, 3f)
+                )
             }
 
-            // Instrução
-            Text(
-                text = "Aponte para o código de barras",
-                color = Color.White,
-                fontSize = 14.sp,
+            // ── Banner superior ──────────────────────────────────────────────
+            Box(
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 120.dp)
-            )
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 16.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = Color.White.copy(alpha = 0.92f),
+                    tonalElevation = 0.dp
+                ) {
+                    Text(
+                        text = "Posicione o código de barras na marcação",
+                        color = Color(0xFF111111),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                    )
+                }
+            }
 
-            // Botão fechar
-            IconButton(
-                onClick = onDismiss,
+            // ── Botão fechar (X) no canto superior direito ───────────────────
+            Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .padding(16.dp)
+                    .statusBarsPadding()
+                    .padding(top = 10.dp, end = 12.dp)
             ) {
-                Icon(
-                    Icons.Default.Close,
-                    null,
-                    tint = Color.White,
-                    modifier = Modifier.size(32.dp)
-                )
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Fechar scanner",
+                            tint = Color.Black,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+
+            // ── Botão inferior: "Digitar código de barras" ──────────────────
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 28.dp, start = 24.dp, end = 24.dp)
+                    .fillMaxWidth()
+            ) {
+                Button(
+                    onClick = { showManualInput = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1E6FFF),
+                        contentColor   = Color.White
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "Digitar código de barras",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
 
         } else {
-            // Sem permissão
+            // ── Sem permissão de câmera ──────────────────────────────────────
             Column(
                 modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -171,7 +219,7 @@ fun CameraScannerScreen(
             ) {
                 Icon(
                     Icons.Default.CameraAlt,
-                    null,
+                    contentDescription = null,
                     tint = Color.White,
                     modifier = Modifier.size(64.dp)
                 )
@@ -184,11 +232,32 @@ fun CameraScannerScreen(
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFD600))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E6FFF))
                 ) {
-                    Text("Conceder permissão", color = Color.Black)
+                    Text("Conceder permissão", color = Color.White)
+                }
+                Spacer(Modifier.height(16.dp))
+                TextButton(onClick = { showManualInput = true }) {
+                    Icon(Icons.Default.Edit, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Digitar manualmente", color = Color.White)
                 }
             }
         }
+    }
+
+    // ── Bottom Sheet de digitação manual ────────────────────────────────────
+    if (showManualInput) {
+        ManualInputBottomSheet(
+            onDismiss = { showManualInput = false },
+            onConfirm = { code ->
+                showManualInput = false
+                onBarcodeDetected(code)
+                onDismiss()
+            },
+            title = manualInputTitle,
+            hint = manualInputHint,
+            label = manualInputLabel
+        )
     }
 }
