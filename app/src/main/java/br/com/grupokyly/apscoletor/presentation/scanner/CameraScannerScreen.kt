@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -137,13 +138,20 @@ fun CameraScannerScreen(
                 )
             }
 
+            val isTorchEnabled by cameraScanner.isTorchEnabled.collectAsState()
+
             // ── Faixa superior com instrução ─────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(start = if (showCloseButton) 72.dp else 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
+                    .padding(
+                        start = if (showCloseButton) 72.dp else 16.dp,
+                        end = 72.dp,
+                        top = 12.dp,
+                        bottom = 12.dp
+                    ),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -180,6 +188,27 @@ fun CameraScannerScreen(
                         modifier = Modifier.size(22.dp)
                     )
                 }
+            }
+
+            // Botão de lanterna (Flashlight) no canto superior direito
+            IconButton(
+                onClick = { cameraScanner.toggleTorch() },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .statusBarsPadding()
+                    .padding(top = 12.dp, end = 16.dp)
+                    .size(44.dp)
+                    .background(
+                        color = if (isTorchEnabled) PrimaryYellow.copy(alpha = 0.85f) else Color(0xFF1E1E1E).copy(alpha = 0.85f),
+                        shape = androidx.compose.foundation.shape.CircleShape
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Bolt,
+                    contentDescription = "Lanterna",
+                    tint = if (isTorchEnabled) Color.Black else Color.White,
+                    modifier = Modifier.size(22.dp)
+                )
             }
 
             if (!showCloseButton) {

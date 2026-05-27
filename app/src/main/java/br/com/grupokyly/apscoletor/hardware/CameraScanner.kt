@@ -22,6 +22,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -37,56 +40,74 @@ class CameraScanner @Inject constructor(
     private var isScanning = false
     private var lastScanTime = 0L
     private var cameraProvider: ProcessCameraProvider? = null
+    private var camera: androidx.camera.core.Camera? = null
+    private var barcodeScanner: BarcodeScanner? = null
+    private var currentSessionId = 0
+
+    private val _isTorchEnabled = MutableStateFlow(false)
+    val isTorchEnabled: StateFlow<Boolean> = _isTorchEnabled.asStateFlow()
 
     fun startScanning(
         lifecycleOwner: LifecycleOwner,
         previewView: PreviewView
     ) {
-        if (isScanning) return
+        stopScanning() // Garante a liberação de recursos de qualquer sessão anterior
+
         isScanning = true
+        val sessionId = ++currentSessionId
 
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
         cameraProviderFuture.addListener({
-            val provider = cameraProviderFuture.get()
-            cameraProvider = provider
-
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
+            if (sessionId != currentSessionId || !isScanning) {
+                return@addListener
             }
-
-            val barcodeScanner = BarcodeScanning.getClient(
-                BarcodeScannerOptions.Builder()
-                    .setBarcodeFormats(
-                        Barcode.FORMAT_CODE_128,
-                        Barcode.FORMAT_CODE_39,
-                        Barcode.FORMAT_EAN_13,
-                        Barcode.FORMAT_EAN_8,
-                        Barcode.FORMAT_QR_CODE,
-                        Barcode.FORMAT_DATA_MATRIX
-                    )
-                    .build()
-            )
-
-            val imageAnalysis = ImageAnalysis.Builder()
-                .setTargetResolution(Size(1280, 720))
-                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .build()
-
-            imageAnalysis.setAnalyzer(
-                ContextCompat.getMainExecutor(context)
-            ) { imageProxy ->
-                processImage(imageProxy, barcodeScanner)
-            }
-
             try {
-                cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
+                val provider = cameraProviderFuture.get()
+                cameraProvider = provider
+
+                val preview = Preview.Builder().build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                }
+
+                val scanner = BarcodeScanning.getClient(
+                    BarcodeScannerOptions.Builder()
+                        .setBarcodeFormats(
+                            Barcode.FORMAT_CODE_128,
+                            Barcode.FORMAT_CODE_39,
+                            Barcode.FORMAT_EAN_13,
+                            Barcode.FORMAT_EAN_8,
+                            Barcode.FORMAT_QR_CODE,
+                            Barcode.FORMAT_DATA_MATRIX
+                        )
+                        .build()
+                )
+                barcodeScanner = scanner
+
+                val imageAnalysis = ImageAnalysis.Builder()
+                    .setTargetResolution(Size(1280, 720))
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .build()
+
+                imageAnalysis.setAnalyzer(
+                    ContextCompat.getMainExecutor(context)
+                ) { imageProxy ->
+                    if (sessionId == currentSessionId && isScanning) {
+                        processImage(imageProxy, scanner)
+                    } else {
+                        imageProxy.close()
+                    }
+                }
+
+                provider.unbindAll()
+                val cameraInstance = provider.bindToLifecycle(
                     lifecycleOwner,
                     CameraSelector.DEFAULT_BACK_CAMERA,
                     preview,
                     imageAnalysis
                 )
+                camera = cameraInstance
+                _isTorchEnabled.value = cameraInstance.cameraInfo.torchState.value == androidx.camera.core.TorchState.ON
             } catch (e: Exception) {
                 Log.e("CameraScanner", "Erro ao iniciar câmera: ${e.message}")
             }
@@ -124,7 +145,37 @@ class CameraScanner @Inject constructor(
             }
     }
 
+    fun toggleTorch() {
+        val currentCamera = camera ?: return
+        val nextState = !_isTorchEnabled.value
+        currentCamera.cameraControl.enableTorch(nextState).addListener({
+            _isTorchEnabled.value = nextState
+        }, ContextCompat.getMainExecutor(context))
+    }
+
     fun stopScanning() {
         isScanning = false
+        currentSessionId++
+        
+        val provider = cameraProvider
+        val scanner = barcodeScanner
+        
+        cameraProvider = null
+        barcodeScanner = null
+        camera = null
+        _isTorchEnabled.value = false
+
+        ContextCompat.getMainExecutor(context).execute {
+            try {
+                provider?.unbindAll()
+            } catch (e: Exception) {
+                Log.e("CameraScanner", "Erro ao unbindAll: ${e.message}")
+            }
+            try {
+                scanner?.close()
+            } catch (e: Exception) {
+                Log.e("CameraScanner", "Erro ao fechar BarcodeScanner: ${e.message}")
+            }
+        }
     }
 }

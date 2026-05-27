@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import br.com.grupokyly.apscoletor.hardware.CameraScanner
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 
 @HiltViewModel
@@ -14,9 +15,14 @@ class CameraScannerViewModel @Inject constructor(
 ) : ViewModel() {
 
     val scannedDataFlow: SharedFlow<String> = cameraScanner.scannedDataFlow
+    val isTorchEnabled: StateFlow<Boolean> = cameraScanner.isTorchEnabled
 
     fun startCamera(lifecycleOwner: LifecycleOwner, previewView: PreviewView) {
         cameraScanner.startScanning(lifecycleOwner, previewView)
+    }
+
+    fun toggleTorch() {
+        cameraScanner.toggleTorch()
     }
 
     fun stopCamera() {
