@@ -42,7 +42,7 @@ class PickingRepositoryImpl @Inject constructor(
             
             if (boxEntity == null) {
                 // Tenta baixar da API
-                val remoteResult = remoteDataSource.getBoxFull(papeletaCode)
+                val remoteResult = remoteDataSource.getBoxFull(normalizedPapeletaCode)
                 remoteResult.fold(
                     onSuccess = { dto ->
                         val newBoxEntity = BoxEntity(
@@ -69,7 +69,7 @@ class PickingRepositoryImpl @Inject constructor(
                         }
                         pickingItemDao.insertAll(itemsToInsert)
                         
-                        boxEntity = boxDao.getBoxByPapeleta(papeletaCode).firstOrNull()
+                        boxEntity = boxDao.getBoxByPapeleta(normalizedPapeletaCode).firstOrNull()
                     },
                     onFailure = {
                         return@withContext Result.failure(Exception("Caixa não encontrada localmente e erro ao buscar no servidor: ${it.message}"))
