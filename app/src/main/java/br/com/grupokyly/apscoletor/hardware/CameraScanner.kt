@@ -36,6 +36,7 @@ class CameraScanner @Inject constructor(
 
     private var isScanning = false
     private var lastScanTime = 0L
+    private var cameraProvider: ProcessCameraProvider? = null
 
     fun startScanning(
         lifecycleOwner: LifecycleOwner,
@@ -47,7 +48,8 @@ class CameraScanner @Inject constructor(
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
 
         cameraProviderFuture.addListener({
-            val cameraProvider = cameraProviderFuture.get()
+            val provider = cameraProviderFuture.get()
+            cameraProvider = provider
 
             val preview = Preview.Builder().build().also {
                 it.setSurfaceProvider(previewView.surfaceProvider)

@@ -25,6 +25,6 @@ interface BoxDao {
     @Query("SELECT * FROM boxes WHERE id = :boxId LIMIT 1")
     suspend fun getBoxById(boxId: Long): BoxEntity?
 
-    @Query("SELECT * FROM boxes WHERE syncedAt IS NULL")
+    @Query("SELECT * FROM boxes WHERE syncedAt IS NULL AND status != 'EM_COLETA'")
     suspend fun getPendingSync(): List<BoxEntity>
 }
