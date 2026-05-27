@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -39,7 +40,8 @@ fun CameraScannerScreen(
     onDismiss: () -> Unit,
     manualInputTitle: String = "Papeleta danificada?",
     manualInputHint: String = "Digite o código da papeleta",
-    manualInputLabel: String = "Código de barras"
+    manualInputLabel: String = "Código de barras",
+    showCloseButton: Boolean = false
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -141,7 +143,7 @@ fun CameraScannerScreen(
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                    .padding(start = if (showCloseButton) 72.dp else 16.dp, end = 16.dp, top = 12.dp, bottom = 12.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -160,36 +162,58 @@ fun CameraScannerScreen(
                 }
             }
 
-            // ── Botão "Digitar código de barras" — paleta amarela ────────────
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 28.dp, start = 24.dp, end = 24.dp)
-                    .fillMaxWidth()
-            ) {
-                Button(
-                    onClick = { showManualInput = true },
+            // Botão de voltar (Back Arrow) no canto superior esquerdo
+            if (showCloseButton) {
+                IconButton(
+                    onClick = onDismiss,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(54.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = PrimaryYellow,
-                        contentColor   = Color.Black
-                    )
+                        .align(Alignment.TopStart)
+                        .statusBarsPadding()
+                        .padding(top = 12.dp, start = 16.dp)
+                        .size(44.dp)
+                        .background(Color(0xFF1E1E1E).copy(alpha = 0.85f), androidx.compose.foundation.shape.CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Voltar",
+                        tint = Color.White,
+                        modifier = Modifier.size(22.dp)
                     )
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        "Digitar código de barras",
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                }
+            }
+
+            if (!showCloseButton) {
+                // ── Botão "Digitar código de barras" — paleta amarela ────────────
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 28.dp, start = 24.dp, end = 24.dp)
+                        .fillMaxWidth()
+                ) {
+                    Button(
+                        onClick = { showManualInput = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PrimaryYellow,
+                            contentColor   = Color.Black
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "Digitar código de barras",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
 

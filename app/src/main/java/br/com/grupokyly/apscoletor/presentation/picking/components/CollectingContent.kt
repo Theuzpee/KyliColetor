@@ -217,57 +217,52 @@ fun CollectingContent(
             Spacer(modifier = Modifier.height(16.dp))
             var showManualInput by remember { mutableStateOf(false) }
             
-            Row(
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Button(
                     onClick = onScanClick,
                     modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
+                        .fillMaxWidth()
+                        .height(52.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = if (state.addressConfirmation == AddressConfirmationState.Confirmed) SuccessGreen else PrimaryYellow,
                         contentColor = Color.Black
                     ),
-                    shape = RoundedCornerShape(8.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.CameraAlt,
                         contentDescription = null,
                         tint = Color.Black,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = if (state.addressConfirmation == AddressConfirmationState.Confirmed) "Escanear Peça" else "Escanear Endereço",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
+                        fontWeight = FontWeight.Black,
+                        fontSize = 16.sp
                     )
                 }
                 
-                OutlinedButton(
+                TextButton(
                     onClick = { showManualInput = true },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, Color(0xFF444444)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Icon(
                         imageVector = Icons.Default.Edit,
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                        tint = TextSecondary,
+                        modifier = Modifier.size(14.dp)
                     )
-                    Spacer(Modifier.width(8.dp))
+                    Spacer(Modifier.width(6.dp))
                     Text(
-                        text = "Digitar Código",
-                        fontWeight = FontWeight.SemiBold,
+                        text = "Digitar código manualmente",
+                        color = TextSecondary,
                         fontSize = 13.sp,
-                        color = Color.White
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }

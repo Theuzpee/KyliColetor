@@ -270,7 +270,8 @@ fun PickingScreen(
                 onDismiss = { showCameraScanner = false },
                 manualInputTitle = title,
                 manualInputHint  = hint,
-                manualInputLabel = label
+                manualInputLabel = label,
+                showCloseButton  = true
             )
         }
 

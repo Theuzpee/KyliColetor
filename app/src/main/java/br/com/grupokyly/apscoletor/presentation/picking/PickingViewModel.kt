@@ -218,9 +218,10 @@ class PickingViewModel @Inject constructor(
     }
 
     private fun handlePapeletaScanned(code: String) {
+        val normalizedCode = code.trim().uppercase()
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = PickingUiState.LoadingBox
-            openBoxUseCase(code).fold(
+            openBoxUseCase(normalizedCode).fold(
                 onSuccess = { box ->
                     // Substituindo collect por firstOrNull para evitar resetar o estado da UI a cada insert no banco (Bug Fix)
                     val items = getBoxItemsUseCase(box.id).firstOrNull() ?: emptyList()
@@ -276,9 +277,10 @@ class PickingViewModel @Inject constructor(
         if (currentState !is PickingUiState.Collecting) return
         if (currentState.addressConfirmation != br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending) return
 
+        val normalizedBarcode = barcode.trim().uppercase()
         viewModelScope.launch {
             val expectedAddress = currentState.currentItem.address
-            val isValid = validateAddressUseCase(barcode, expectedAddress)
+            val isValid = validateAddressUseCase(normalizedBarcode, expectedAddress)
 
             if (isValid) {
                 scanFeedbackManager.scanPartialSuccess()
@@ -321,14 +323,15 @@ class PickingViewModel @Inject constructor(
         val currentState = _uiState.value
         if (currentState !is PickingUiState.Collecting) return
 
+        val normalizedBarcode = barcode.trim().uppercase()
         viewModelScope.launch(Dispatchers.IO) {
-            registerScanUseCase(barcode, currentState.box.id).fold(
+            registerScanUseCase(normalizedBarcode, currentState.box.id).fold(
                 onSuccess = { result ->
                     when (result) {
                         is ScanResult.Success -> {
                             scanFeedbackManager.scanPartialSuccess()
                             
-                            val updatedHistory = buildUpdatedHistory(currentState.lastScannedItems, barcode, isManual)
+                            val updatedHistory = buildUpdatedHistory(currentState.lastScannedItems, normalizedBarcode, isManual)
                             
                             _uiState.value = currentState.copy(
                                 currentItem = result.item,
