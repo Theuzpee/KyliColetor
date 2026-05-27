@@ -130,9 +130,15 @@ export class PickingService {
   }
 
   async checkIfExists(papeletaCode: string) {
-    const existingBox = await this.boxRepository.findOne({
+    let existingBox = await this.boxRepository.findOne({
       where: { papeletaCode },
     });
+
+    if (!existingBox) {
+      existingBox = await this.boxRepository.findOne({
+        where: { orderId: papeletaCode },
+      });
+    }
 
     if (!existingBox) {
       return { exists: false };
@@ -142,10 +148,17 @@ export class PickingService {
   }
 
   async getBox(papeletaCode: string) {
-    const box = await this.boxRepository.findOne({
+    let box = await this.boxRepository.findOne({
       where: { papeletaCode },
       relations: ['items', 'items.scannedPieces', 'divergences'],
     });
+
+    if (!box) {
+      box = await this.boxRepository.findOne({
+        where: { orderId: papeletaCode },
+        relations: ['items', 'items.scannedPieces', 'divergences'],
+      });
+    }
 
     if (!box) {
       throw new NotFoundException('Caixa não encontrada');

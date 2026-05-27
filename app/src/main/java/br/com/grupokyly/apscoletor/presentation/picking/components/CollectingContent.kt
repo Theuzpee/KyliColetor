@@ -246,25 +246,6 @@ fun CollectingContent(
                         fontSize = 16.sp
                     )
                 }
-                
-                TextButton(
-                    onClick = { showManualInput = true },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = null,
-                        tint = TextSecondary,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(
-                        text = "Digitar código manualmente",
-                        color = TextSecondary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
             }
 
             if (showManualInput) {

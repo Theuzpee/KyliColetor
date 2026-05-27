@@ -19,7 +19,7 @@ interface BoxDao {
     @Query("UPDATE boxes SET syncedAt = :syncedAt WHERE id = :boxId")
     suspend fun updateSyncedAt(boxId: Long, syncedAt: Long?)
 
-    @Query("SELECT * FROM boxes WHERE papeletaCode = :papeletaCode LIMIT 1")
+    @Query("SELECT * FROM boxes WHERE papeletaCode = :papeletaCode OR orderId = :papeletaCode LIMIT 1")
     fun getBoxByPapeleta(papeletaCode: String): Flow<BoxEntity?>
 
     @Query("SELECT * FROM boxes WHERE id = :boxId LIMIT 1")
