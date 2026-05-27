@@ -83,32 +83,25 @@ fun PickingScreen(
         }
     }
 
+    // Abre a câmera automaticamente assim que o app entra no estado Idle
+    LaunchedEffect(uiState) {
+        if (uiState is PickingUiState.Idle && !showCameraScanner) {
+            cameraScannerMode = "papeleta"
+            showCameraScanner = true
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
 
         // ── Conteúdo principal por estado ────────────────────────────────────
         when (val state = uiState) {
             is PickingUiState.Idle -> {
+                // Câmera abre automaticamente via LaunchedEffect acima.
+                // Este conteúdo fica como fallback enquanto a câmera não abre.
                 IdleContent(onManualClick = {
                     cameraScannerMode = "papeleta"
                     showCameraScanner = true
                 })
-                // FAB de câmera — abre o scanner ao toque
-                androidx.compose.material3.FloatingActionButton(
-                    onClick = {
-                        cameraScannerMode = "papeleta"
-                        showCameraScanner = true
-                    },
-                    containerColor = PrimaryYellow,
-                    contentColor = androidx.compose.ui.graphics.Color.Black,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 16.dp, bottom = 80.dp)
-                ) {
-                    androidx.compose.material3.Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Escanear com a câmera"
-                    )
-                }
             }
 
             is PickingUiState.LoadingBox -> LoadingContent()

@@ -26,9 +26,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import br.com.grupokyly.apscoletor.presentation.components.ManualInputBottomSheet
+import br.com.grupokyly.apscoletor.presentation.theme.BackgroundPrimary
+import br.com.grupokyly.apscoletor.presentation.theme.PrimaryYellow
+import br.com.grupokyly.apscoletor.presentation.theme.TextPrimary
+import br.com.grupokyly.apscoletor.presentation.theme.TextSecondary
 
 @Composable
 fun CameraScannerScreen(
@@ -63,12 +67,9 @@ fun CameraScannerScreen(
     }
 
     DisposableEffect(Unit) {
-        onDispose {
-            cameraScanner.stopCamera()
-        }
+        onDispose { cameraScanner.stopCamera() }
     }
 
-    // Coletar scans da câmera
     LaunchedEffect(Unit) {
         cameraScanner.scannedDataFlow.collect { barcode ->
             onBarcodeDetected(barcode)
@@ -82,6 +83,7 @@ fun CameraScannerScreen(
             .background(Color.Black)
     ) {
         if (hasCameraPermission) {
+
             // ── Preview da câmera (fundo completo) ──────────────────────────
             AndroidView(
                 factory = { ctx ->
@@ -92,92 +94,90 @@ fun CameraScannerScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // ── Overlay escuro com janela de leitura ─────────────────────────
+            // ── Overlay com janela de leitura ────────────────────────────────
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val scanWidth  = size.width * 0.78f
-                val scanHeight = scanWidth * 0.48f          // proporção paisagem (barcode)
-                val left = (size.width  - scanWidth)  / 2f
-                val top  = (size.height - scanHeight) / 2f - size.height * 0.05f
-                val scrimColor = Color.Black.copy(alpha = 0.65f)
+                val scanHeight = scanWidth * 0.46f          // proporção barcode horizontal
+                val left  = (size.width  - scanWidth)  / 2f
+                val top   = (size.height - scanHeight) / 2f - size.height * 0.04f
+                val scrim = Color.Black.copy(alpha = 0.65f)
 
-                // 4 sombras ao redor da janela
-                drawRect(scrimColor, Offset(0f, 0f),             Size(size.width, top))
-                drawRect(scrimColor, Offset(0f, top + scanHeight), Size(size.width, size.height - (top + scanHeight)))
-                drawRect(scrimColor, Offset(0f, top),             Size(left, scanHeight))
-                drawRect(scrimColor, Offset(left + scanWidth, top), Size(size.width - (left + scanWidth), scanHeight))
+                // 4 sombras ao redor da janela transparente
+                drawRect(scrim, Offset(0f, 0f),               Size(size.width, top))
+                drawRect(scrim, Offset(0f, top + scanHeight), Size(size.width, size.height - (top + scanHeight)))
+                drawRect(scrim, Offset(0f, top),              Size(left, scanHeight))
+                drawRect(scrim, Offset(left + scanWidth, top), Size(size.width - (left + scanWidth), scanHeight))
 
-                // Cantos azuis (estilo referência)
-                val cornerLen = 52f
-                val stroke    = 7f
-                val blue      = Color(0xFF1E6FFF)
+                // Cantos amarelos (paleta do app)
+                val cornerLen  = 56f
+                val stroke     = 7f
+                val yellow     = android.graphics.Color.parseColor("#FFD600").let {
+                    Color(it)
+                }
 
-                // Canto Superior Esquerdo
-                drawLine(blue, Offset(left, top),                        Offset(left + cornerLen, top),              stroke)
-                drawLine(blue, Offset(left, top),                        Offset(left, top + cornerLen),              stroke)
-                // Canto Superior Direito
-                drawLine(blue, Offset(left + scanWidth, top),            Offset(left + scanWidth - cornerLen, top),  stroke)
-                drawLine(blue, Offset(left + scanWidth, top),            Offset(left + scanWidth, top + cornerLen),  stroke)
-                // Canto Inferior Esquerdo
-                drawLine(blue, Offset(left, top + scanHeight),           Offset(left + cornerLen, top + scanHeight), stroke)
-                drawLine(blue, Offset(left, top + scanHeight),           Offset(left, top + scanHeight - cornerLen), stroke)
-                // Canto Inferior Direito
-                drawLine(blue, Offset(left + scanWidth, top + scanHeight), Offset(left + scanWidth - cornerLen, top + scanHeight), stroke)
-                drawLine(blue, Offset(left + scanWidth, top + scanHeight), Offset(left + scanWidth, top + scanHeight - cornerLen), stroke)
+                // Superior Esquerdo
+                drawLine(yellow, Offset(left, top), Offset(left + cornerLen, top), stroke)
+                drawLine(yellow, Offset(left, top), Offset(left, top + cornerLen), stroke)
+                // Superior Direito
+                drawLine(yellow, Offset(left + scanWidth, top), Offset(left + scanWidth - cornerLen, top), stroke)
+                drawLine(yellow, Offset(left + scanWidth, top), Offset(left + scanWidth, top + cornerLen), stroke)
+                // Inferior Esquerdo
+                drawLine(yellow, Offset(left, top + scanHeight), Offset(left + cornerLen, top + scanHeight), stroke)
+                drawLine(yellow, Offset(left, top + scanHeight), Offset(left, top + scanHeight - cornerLen), stroke)
+                // Inferior Direito
+                drawLine(yellow, Offset(left + scanWidth, top + scanHeight), Offset(left + scanWidth - cornerLen, top + scanHeight), stroke)
+                drawLine(yellow, Offset(left + scanWidth, top + scanHeight), Offset(left + scanWidth, top + scanHeight - cornerLen), stroke)
 
-                // Linha de scan animada (linha azul no centro)
+                // Linha de scan amarela no centro da janela
                 drawRect(
-                    color = blue.copy(alpha = 0.6f),
-                    topLeft = Offset(left + 8f, top + scanHeight / 2f - 1.5f),
-                    size = Size(scanWidth - 16f, 3f)
+                    color = yellow.copy(alpha = 0.55f),
+                    topLeft = Offset(left + 12f, top + scanHeight / 2f - 1.5f),
+                    size    = Size(scanWidth - 24f, 3f)
                 )
             }
 
-            // ── Banner superior ──────────────────────────────────────────────
-            Box(
+            // ── Faixa superior com instrução + botão fechar ──────────────────
+            Row(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(top = 16.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
-                    color = Color.White.copy(alpha = 0.92f),
-                    tonalElevation = 0.dp
+                    shape = RoundedCornerShape(20.dp),
+                    color = BackgroundPrimary.copy(alpha = 0.88f),
+                    modifier = Modifier.weight(1f).padding(end = 8.dp)
                 ) {
                     Text(
                         text = "Posicione o código de barras na marcação",
-                        color = Color(0xFF111111),
-                        fontSize = 14.sp,
+                        color = TextPrimary,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                     )
                 }
-            }
 
-            // ── Botão fechar (X) no canto superior direito ───────────────────
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .statusBarsPadding()
-                    .padding(top = 10.dp, end = 12.dp)
-            ) {
+                // Botão X circular
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = BackgroundPrimary.copy(alpha = 0.88f),
                     modifier = Modifier.size(44.dp)
                 ) {
                     IconButton(onClick = onDismiss) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Fechar scanner",
-                            tint = Color.Black,
+                            tint = TextPrimary,
                             modifier = Modifier.size(22.dp)
                         )
                     }
                 }
             }
 
-            // ── Botão inferior: "Digitar código de barras" ──────────────────
+            // ── Botão "Digitar código de barras" — paleta amarela ────────────
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -192,8 +192,8 @@ fun CameraScannerScreen(
                         .height(54.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF1E6FFF),
-                        contentColor   = Color.White
+                        containerColor = PrimaryYellow,
+                        contentColor   = Color.Black
                     )
                 ) {
                     Icon(
@@ -205,7 +205,7 @@ fun CameraScannerScreen(
                     Text(
                         "Digitar código de barras",
                         fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }
@@ -220,27 +220,30 @@ fun CameraScannerScreen(
                 Icon(
                     Icons.Default.CameraAlt,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = PrimaryYellow,
                     modifier = Modifier.size(64.dp)
                 )
                 Spacer(Modifier.height(16.dp))
                 Text(
                     "Permissão de câmera necessária",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontSize = 16.sp
                 )
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = { permissionLauncher.launch(Manifest.permission.CAMERA) },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E6FFF))
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryYellow,
+                        contentColor   = Color.Black
+                    )
                 ) {
-                    Text("Conceder permissão", color = Color.White)
+                    Text("Conceder permissão", fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(12.dp))
                 TextButton(onClick = { showManualInput = true }) {
-                    Icon(Icons.Default.Edit, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Edit, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text("Digitar manualmente", color = Color.White)
+                    Text("Digitar manualmente", color = TextSecondary)
                 }
             }
         }
@@ -256,7 +259,7 @@ fun CameraScannerScreen(
                 onDismiss()
             },
             title = manualInputTitle,
-            hint = manualInputHint,
+            hint  = manualInputHint,
             label = manualInputLabel
         )
     }

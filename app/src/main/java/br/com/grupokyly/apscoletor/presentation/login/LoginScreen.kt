@@ -9,10 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Edit
-import br.com.grupokyly.apscoletor.BuildConfig
-import br.com.grupokyly.apscoletor.presentation.scanner.CameraScannerScreen
 import br.com.grupokyly.apscoletor.presentation.components.ManualInputBottomSheet
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -72,8 +69,6 @@ fun LoginScreenContent(
     var supervisorInput by remember { mutableStateOf("") }
     var operatorInput by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
-    var showCameraScanner by remember { mutableStateOf(false) }
-    var activeFieldForCamera by remember { mutableStateOf<String?>(null) }
     var showManualSupervisor by remember { mutableStateOf(false) }
     var showManualOperator by remember { mutableStateOf(false) }
 
@@ -154,20 +149,6 @@ fun LoginScreenContent(
                         tint = PrimaryYellow
                     )
                 },
-                trailingIcon = {
-                    if (!BuildConfig.IS_DATALOGIC_DEVICE) {
-                        IconButton(onClick = {
-                            activeFieldForCamera = "supervisor"
-                            showCameraScanner = true
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.CameraAlt,
-                                contentDescription = "Escanear com a câmera",
-                                tint = PrimaryYellow
-                            )
-                        }
-                    }
-                },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -225,22 +206,7 @@ fun LoginScreenContent(
                         else TextSecondary.copy(alpha = 0.4f)
                     )
                 },
-                trailingIcon = {
-                    if (!BuildConfig.IS_DATALOGIC_DEVICE) {
-                        IconButton(onClick = {
-                            activeFieldForCamera = "operator"
-                            showCameraScanner = true
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.CameraAlt,
-                                contentDescription = "Escanear com a câmera",
-                                tint = if (supervisorInput.isNotBlank()) PrimaryYellow
-                                else TextSecondary.copy(alpha = 0.4f)
-                            )
-                        }
-                    }
-                },
-                enabled = supervisorInput.isNotBlank(), // só ativa após supervisor
+                enabled = supervisorInput.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
@@ -318,23 +284,6 @@ fun LoginScreenContent(
             }
         }
 
-        if (showCameraScanner) {
-            CameraScannerScreen(
-                onBarcodeDetected = { barcode ->
-                    if (activeFieldForCamera == "supervisor") {
-                        supervisorInput = barcode
-                    } else if (activeFieldForCamera == "operator") {
-                        operatorInput = barcode
-                    }
-                    showCameraScanner = false
-                    activeFieldForCamera = null
-                },
-                onDismiss = {
-                    showCameraScanner = false
-                    activeFieldForCamera = null
-                }
-            )
-        }
 
         if (showManualSupervisor) {
             ManualInputBottomSheet(

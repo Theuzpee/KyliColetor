@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity, AlertTriangle, CheckCircle, Package, Users, ClipboardList, Clock } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle, Package, Users, ClipboardList, Clock, Barcode as BarcodeIcon } from 'lucide-react';
 
 interface ActiveBox {
   id: string;
@@ -56,6 +56,97 @@ interface TelemetryData {
 }
 import './index.css';
 
+// SVG Barcode Generator (Code 39)
+const Barcode: React.FC<{ value: string; height?: number }> = ({ value, height = 60 }) => {
+  const encodings: Record<string, string> = {
+    '0': 'N N W W N N N W N',
+    '1': 'W N N W N N N N W',
+    '2': 'N N W W N N N N W',
+    '3': 'W N W W N N N N N',
+    '4': 'N N N W W N N N W',
+    '5': 'W N N W W N N N N',
+    '6': 'N N W W W N N N N',
+    '7': 'N N N W N N W N W',
+    '8': 'W N N W N N W N N',
+    '9': 'N N W W N N W N N',
+    'A': 'W N N N N W N N W',
+    'B': 'N N W N N W N N W',
+    'C': 'W N W N N W N N N',
+    'D': 'N N N N W W N N W',
+    'E': 'W N N N W W N N N',
+    'F': 'N N W N W W N N N',
+    'G': 'N N N N N W W N W',
+    'H': 'W N N N N W W N N',
+    'I': 'N N W N N W W N N',
+    'J': 'N N N N W W W N N',
+    'K': 'W N N N N N N W W',
+    'L': 'N N W N N N N W W',
+    'M': 'W N W N N N N W N',
+    'N': 'N N N N W N N W W',
+    'O': 'W N N N W N N W N',
+    'P': 'N N W N W N N W N',
+    'Q': 'N N N N N N W W W',
+    'R': 'W N N N N N W W N',
+    'S': 'N N W N N N W W N',
+    'T': 'N N N N W N W W N',
+    'U': 'W W N N N N N N W',
+    'V': 'N W W N N N N N W',
+    'W': 'W W W N N N N N N',
+    'X': 'N W N N W N N N W',
+    'Y': 'W W N N W N N N N',
+    'Z': 'N W W N W N N N N',
+    '-': 'N W N N N N W N W',
+    '.': 'W W N N N N W N N',
+    ' ': 'N W W N N N W N N',
+    '*': 'N W N N W N W N N'
+  };
+
+  const formattedValue = `*${value.toUpperCase()}*`;
+  let currentX = 0;
+  const bars: { x: number; width: number }[] = [];
+
+  for (let i = 0; i < formattedValue.length; i++) {
+    const char = formattedValue[i];
+    const encoding = encodings[char] || encodings[' '];
+    const elements = encoding.split(' ');
+
+    elements.forEach((element, index) => {
+      const width = element === 'W' ? 3 : 1;
+      const isBar = index % 2 === 0;
+
+      if (isBar) {
+        bars.push({ x: currentX, width });
+      }
+      currentX += width;
+    });
+
+    if (i < formattedValue.length - 1) {
+      currentX += 1;
+    }
+  }
+
+  return (
+    <svg 
+      width="100%" 
+      height={height} 
+      viewBox={`0 0 ${currentX} ${height}`} 
+      preserveAspectRatio="none"
+      style={{ display: 'block', background: '#fff', padding: '4px' }}
+    >
+      {bars.map((bar, idx) => (
+        <rect
+          key={idx}
+          x={bar.x}
+          y={0}
+          width={bar.width}
+          height={height}
+          fill="#000"
+        />
+      ))}
+    </svg>
+  );
+};
+
 // Mock Data as fallback
 const MOCK_PRODUCTIVITY_DATA = [
   { time: '08:00', pieces: 120 },
@@ -72,13 +163,14 @@ function App() {
   const [telemetry, setTelemetry] = useState<TelemetryData | null>(null);
   const [divergencesSummary, setDivergencesSummary] = useState<DivergenceSummaryItem[]>([]);
   const [activeTab, setActiveTab] = useState<'telemetry' | 'picking'>('telemetry');
+  const [selectedBarcodeBox, setSelectedBarcodeBox] = useState<ActiveBox | CompletedBox | null>(null);
 
   useEffect(() => {
     fetch('/api/picking/divergences/summary')
       .then(res => res.json())
       .then(data => {
         if (data.byReason) {
-           const chartData = Object.entries(data.byReason).map(([name, value]) => ({ name, value }));
+           const chartData = Object.entries(data.byReason).map(([name, value]) => ({ name, value: Number(value) }));
            setDivergencesSummary(chartData.length > 0 ? chartData : [
              { name: 'Desabastecido', value: 5 },
              { name: 'Código Ilegível', value: 2 },
@@ -402,7 +494,7 @@ function App() {
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', paddingTop: '4px', borderTop: '1px solid rgba(255,255,255,0.04)', marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
                           <Users size={14} />
                           <span>{box.operator}</span>
@@ -411,6 +503,29 @@ function App() {
                           {box.totalCollected} / {box.totalRequired} <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>peças</span>
                         </div>
                       </div>
+
+                      <button
+                        onClick={() => setSelectedBarcodeBox(box)}
+                        style={{
+                          width: '100%',
+                          background: 'rgba(59, 130, 246, 0.08)',
+                          border: '1px solid rgba(59, 130, 246, 0.2)',
+                          color: '#60a5fa',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <BarcodeIcon size={14} />
+                        Código de Barras
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -468,7 +583,7 @@ function App() {
                         </span>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.04)', marginBottom: '12px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
                           <Users size={14} />
                           <span>{box.operator}</span>
@@ -482,6 +597,29 @@ function App() {
                           </span>
                         </div>
                       </div>
+
+                      <button
+                        onClick={() => setSelectedBarcodeBox(box)}
+                        style={{
+                          width: '100%',
+                          background: 'rgba(16, 185, 129, 0.08)',
+                          border: '1px solid rgba(16, 185, 129, 0.2)',
+                          color: '#34d399',
+                          padding: '8px 12px',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontSize: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <BarcodeIcon size={14} />
+                        Código de Barras
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -491,6 +629,119 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Modal de Código de Barras */}
+      {selectedBarcodeBox && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          animation: 'fadeIn 0.2s ease-out'
+        }}>
+          <div style={{
+            background: '#1e293b',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '16px',
+            padding: '32px',
+            width: '450px',
+            maxWidth: '90%',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '24px',
+            animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BarcodeIcon size={20} color="var(--primary)" />
+                Código da Papeleta
+              </h3>
+              <button 
+                onClick={() => setSelectedBarcodeBox(null)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  fontSize: '20px',
+                  lineHeight: 1,
+                  padding: '4px'
+                }}
+              >
+                &times;
+              </button>
+            </div>
+            
+            <div style={{ 
+              background: '#fff', 
+              padding: '24px', 
+              borderRadius: '12px', 
+              width: '100%',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.06)'
+            }}>
+              <Barcode value={selectedBarcodeBox.id} height={80} />
+            </div>
+
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontFamily: 'monospace', fontSize: '22px', fontWeight: 700, color: '#fff', letterSpacing: '2px' }}>
+                {selectedBarcodeBox.id}
+              </div>
+              <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginTop: '6px' }}>
+                Pedido: <strong style={{ color: '#fff' }}>{selectedBarcodeBox.order}</strong>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', width: '100%', gap: '12px', marginTop: '8px' }}>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(selectedBarcodeBox.id);
+                  alert('Código de barras copiado!');
+                }}
+                style={{
+                  flex: 1,
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: '#fff',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'all 0.2s',
+                  fontSize: '14px'
+                }}
+              >
+                Copiar Código
+              </button>
+              <button
+                onClick={() => setSelectedBarcodeBox(null)}
+                style={{
+                  flex: 1,
+                  background: 'var(--primary)',
+                  border: 'none',
+                  color: '#fff',
+                  padding: '12px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'all 0.2s',
+                  fontSize: '14px'
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
