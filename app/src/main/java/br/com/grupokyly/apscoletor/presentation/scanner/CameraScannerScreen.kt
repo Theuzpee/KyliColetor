@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -136,20 +135,20 @@ fun CameraScannerScreen(
                 )
             }
 
-            // ── Faixa superior com instrução + botão fechar ──────────────────
+            // ── Faixa superior com instrução ─────────────────────────────────
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
                     shape = RoundedCornerShape(20.dp),
                     color = BackgroundPrimary.copy(alpha = 0.88f),
-                    modifier = Modifier.weight(1f).padding(end = 8.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
                         text = "Posicione o código de barras na marcação",
@@ -158,22 +157,6 @@ fun CameraScannerScreen(
                         fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
                     )
-                }
-
-                // Botão X circular
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = BackgroundPrimary.copy(alpha = 0.88f),
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Fechar scanner",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
                 }
             }
 

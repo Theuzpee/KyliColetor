@@ -251,7 +251,11 @@ private fun formatCode(rawInput: String, type: String): String {
     val prefixes = listOf("SUP", "OP", "EMP", "PAP", "PECA", "REF")
     for (prefix in prefixes) {
         if (input.startsWith(prefix)) {
-            val remaining = input.substring(prefix.length).replace("-", "")
+            // Se já tem um hífen logo após o prefixo, preserva toda a digitação original para não corromper hífens secundários (como em PAP-MULTI-001)
+            if (input.length > prefix.length && input[prefix.length] == '-') {
+                return input
+            }
+            val remaining = input.substring(prefix.length)
             if (remaining.isNotEmpty()) {
                 return "$prefix-$remaining"
             }

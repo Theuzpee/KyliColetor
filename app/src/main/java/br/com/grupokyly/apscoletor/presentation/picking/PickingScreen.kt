@@ -23,7 +23,6 @@ import br.com.grupokyly.apscoletor.presentation.picking.components.BoxPartialCon
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxMultiFloorContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.CollectingContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.ErrorBanner
-import br.com.grupokyly.apscoletor.presentation.picking.components.IdleContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.ItemCompleteContent
 import br.com.grupokyly.apscoletor.presentation.scanner.CameraScannerScreen
 import br.com.grupokyly.apscoletor.presentation.picking.components.LoadingContent
@@ -83,25 +82,22 @@ fun PickingScreen(
         }
     }
 
-    // Abre a câmera automaticamente assim que o app entra no estado Idle
-    LaunchedEffect(uiState) {
-        if (uiState is PickingUiState.Idle && !showCameraScanner) {
-            cameraScannerMode = "papeleta"
-            showCameraScanner = true
-        }
-    }
+
 
     Box(modifier = Modifier.fillMaxSize()) {
 
         // ── Conteúdo principal por estado ────────────────────────────────────
         when (val state = uiState) {
             is PickingUiState.Idle -> {
-                // Câmera abre automaticamente via LaunchedEffect acima.
-                // Este conteúdo fica como fallback enquanto a câmera não abre.
-                IdleContent(onManualClick = {
-                    cameraScannerMode = "papeleta"
-                    showCameraScanner = true
-                })
+                CameraScannerScreen(
+                    onBarcodeDetected = { barcode ->
+                        viewModel.onEvent(PickingEvent.OnPapeletaScanned(barcode))
+                    },
+                    onDismiss = {},
+                    manualInputTitle = "Papeleta danificada?",
+                    manualInputHint = "Digite o código da papeleta",
+                    manualInputLabel = "Código de barras"
+                )
             }
 
             is PickingUiState.LoadingBox -> LoadingContent()
@@ -166,10 +162,15 @@ fun PickingScreen(
                         onSkipRequest    = { showSkipSheet = true },
                         onManualInput    = { }
                     )
-                } ?: IdleContent(onManualClick = {
-                    cameraScannerMode = "papeleta"
-                    showCameraScanner = true
-                })
+                } ?: CameraScannerScreen(
+                    onBarcodeDetected = { barcode ->
+                        viewModel.onEvent(PickingEvent.OnPapeletaScanned(barcode))
+                    },
+                    onDismiss = {},
+                    manualInputTitle = "Papeleta danificada?",
+                    manualInputHint = "Digite o código da papeleta",
+                    manualInputLabel = "Código de barras"
+                )
 
                 Box(modifier = Modifier.align(Alignment.TopCenter)) {
                     ErrorBanner(message = state.message)
