@@ -219,10 +219,12 @@ class PickingViewModel @Inject constructor(
 
     private fun handlePapeletaScanned(code: String) {
         val normalizedCode = code.trim().uppercase()
+        android.util.Log.d("PickingViewModel", "=== PAPELETA ESCANEADA: '$normalizedCode' ===")
         viewModelScope.launch(Dispatchers.IO) {
             _uiState.value = PickingUiState.LoadingBox
             openBoxUseCase(normalizedCode).fold(
                 onSuccess = { box ->
+                    android.util.Log.i("PickingViewModel", "--> Papeleta carregada: ID=${box.id}, OrderID=${box.orderId}, Status=${box.status}, Reaberta=${box.isReopened}")
                     // Substituindo collect por firstOrNull para evitar resetar o estado da UI a cada insert no banco (Bug Fix)
                     val items = getBoxItemsUseCase(box.id).firstOrNull() ?: emptyList()
                     val currentItem = items.firstOrNull { it.status == ItemStatus.PENDENTE }
@@ -235,7 +237,10 @@ class PickingViewModel @Inject constructor(
                         
                         val hasStarted = completedCount > 0 || box.isReopened
                         
+                        android.util.Log.d("PickingViewModel", "Itens da caixa: total=${items.size}, completos=$completedCount, pendentes=$pendingCount, divergentes=$divergencesCount. Proximo item: ${currentItem.reference} no endereco ${currentItem.address}")
+
                         if (hasStarted) {
+                            android.util.Log.d("PickingViewModel", "Caixa ja iniciada. Exibindo tela de resumo/timeline (BoxResuming)")
                             _uiState.value = PickingUiState.BoxResuming(
                                 box = box,
                                 collectedItemsCount = completedCount,
@@ -245,6 +250,7 @@ class PickingViewModel @Inject constructor(
                                 isMultiFloor = box.isReopened
                             )
                         } else {
+                            android.util.Log.d("PickingViewModel", "Caixa vazia/limpa. Iniciando coleta diretamente (Collecting)")
                             _uiState.value = PickingUiState.Collecting(
                                 box = box,
                                 currentItem = currentItem,
@@ -258,11 +264,13 @@ class PickingViewModel @Inject constructor(
                             )
                         }
                     } else {
+                        android.util.Log.w("PickingViewModel", "Caixa aberta sem itens pendentes de coleta. Finalizando...")
                         // Finaliza direto se a caixa for aberta mas já não tiver itens pendentes
                         handleFinalizeBoxInternal(box.id, box.createdAt)
                     }
                 },
                 onFailure = { e ->
+                    android.util.Log.e("PickingViewModel", "Erro ao carregar a caixa no servidor/local: ${e.message}", e)
                     scanFeedbackManager.scanError()
                     _uiState.value = PickingUiState.Error(e.message ?: "Erro desconhecido")
                     delay(5000)
@@ -278,21 +286,25 @@ class PickingViewModel @Inject constructor(
         if (currentState.addressConfirmation != br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Pending) return
 
         val normalizedBarcode = barcode.trim().uppercase()
+        android.util.Log.d("PickingViewModel", "=== ENDEREÇO ESCANEADO: '$normalizedBarcode' ===")
         viewModelScope.launch {
             val expectedAddress = currentState.currentItem.address
             val isValid = validateAddressUseCase(normalizedBarcode, expectedAddress)
 
             if (isValid) {
+                android.util.Log.i("PickingViewModel", "--> Endereco correto! Confirmado: '$normalizedBarcode'")
                 scanFeedbackManager.scanPartialSuccess()
                 _uiState.value = currentState.copy(
                     addressConfirmation = br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState.Confirmed
                 )
             } else {
+                android.util.Log.w("PickingViewModel", "--> Endereco incorreto! Lido: '$normalizedBarcode', Esperado: '$expectedAddress'")
                 // Inteligência Contextual: Verificar se o erro foi de Corredor
                 val isWrongAisle = barcode.isNotEmpty() && expectedAddress.isNotEmpty() &&
                         barcode.first().uppercaseChar() != expectedAddress.first().uppercaseChar()
 
                 if (isWrongAisle) {
+                    android.util.Log.e("PickingViewModel", "Alerta: Corredor incorreto! Lido=${barcode.first().uppercaseChar()}, Esperado=${expectedAddress.first().uppercaseChar()}")
                     scanFeedbackManager.scanSequenceError()
                     _uiState.value = PickingUiState.Error("Aviso Contextual: Você está no corredor errado! Esperado: Corredor ${expectedAddress.first().uppercaseChar()}")
                 } else {
@@ -324,11 +336,14 @@ class PickingViewModel @Inject constructor(
         if (currentState !is PickingUiState.Collecting) return
 
         val normalizedBarcode = barcode.trim().uppercase()
+        android.util.Log.d("PickingViewModel", "=== PEÇA ESCANEADA: '$normalizedBarcode' (manual=$isManual) ===")
         viewModelScope.launch(Dispatchers.IO) {
             registerScanUseCase(normalizedBarcode, currentState.box.id).fold(
                 onSuccess = { result ->
+                    android.util.Log.i("PickingViewModel", "--> Resultado da bipagem da peca: ${result::class.java.simpleName}")
                     when (result) {
                         is ScanResult.Success -> {
+                            android.util.Log.d("PickingViewModel", "Peca adicionada. SKU=${result.item.reference}, Coletado=${result.item.quantityCollected}/${result.item.quantityRequired}")
                             scanFeedbackManager.scanPartialSuccess()
                             
                             val updatedHistory = buildUpdatedHistory(currentState.lastScannedItems, normalizedBarcode, isManual)
@@ -340,6 +355,7 @@ class PickingViewModel @Inject constructor(
                             )
                         }
                         is ScanResult.QuantityComplete -> {
+                            android.util.Log.i("PickingViewModel", "SKU concluido! Quantidade atingida para ${currentState.currentItem.reference}")
                             scanFeedbackManager.scanSkuComplete()
                             
                             // To keep history when going to next item, it should be passed to next state
@@ -352,12 +368,14 @@ class PickingViewModel @Inject constructor(
                             )
                         }
                         is ScanResult.AlreadyScanned -> {
+                            android.util.Log.w("PickingViewModel", "Peca duplicada! Codigo '$normalizedBarcode' ja foi registrado nesta caixa.")
                             scanFeedbackManager.scanDuplicateError()
                             _uiState.value = PickingUiState.Error("Peça já bipada nesta caixa.")
                             delay(5000)
                             _uiState.value = currentState // Volta para Collecting sem perder estado
                         }
                         is ScanResult.SkuNotFound -> {
+                            android.util.Log.w("PickingViewModel", "Peca nao pertence ao endereco atual! Codigo '$normalizedBarcode'")
                             scanFeedbackManager.scanError()
                             _uiState.value = PickingUiState.Error("Peça não pertence a este endereço.")
                             delay(5000)
