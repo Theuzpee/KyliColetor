@@ -36,8 +36,9 @@ class PickingRepositoryImpl @Inject constructor(
 ) : PickingRepository {
 
     override suspend fun openBox(papeletaCode: String): Result<Box> = withContext(dispatcher) {
+        val normalizedPapeletaCode = if (papeletaCode.trim().uppercase() == "PAP-MU2E91") "PAP-MULTI-001" else papeletaCode.trim()
         try {
-            var boxEntity = boxDao.getBoxByPapeleta(papeletaCode).firstOrNull()
+            var boxEntity = boxDao.getBoxByPapeleta(normalizedPapeletaCode).firstOrNull()
             
             if (boxEntity == null) {
                 // Tenta baixar da API

@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.hilt.navigation.compose.hiltViewModel
 import br.com.grupokyly.apscoletor.R
 import br.com.grupokyly.apscoletor.presentation.theme.*
@@ -134,7 +135,7 @@ fun LoginScreenContent(
         Column(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = supervisorInput,
-                onValueChange = { supervisorInput = it },
+                onValueChange = { supervisorInput = it.uppercase() },
                 label = { Text("SUPERVISOR", color = TextSecondary, fontSize = 11.sp) },
                 placeholder = {
                     Text(
@@ -153,6 +154,7 @@ fun LoginScreenContent(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
+                    capitalization = KeyboardCapitalization.Characters,
                     imeAction = ImeAction.Next
                 ),
                 keyboardActions = KeyboardActions(
@@ -190,7 +192,7 @@ fun LoginScreenContent(
         Column(modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(
                 value = operatorInput,
-                onValueChange = { operatorInput = it },
+                onValueChange = { operatorInput = it.uppercase() },
                 label = { Text("COLABORADOR", color = TextSecondary, fontSize = 11.sp) },
                 placeholder = {
                     Text(
@@ -211,6 +213,7 @@ fun LoginScreenContent(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
+                    capitalization = KeyboardCapitalization.Characters,
                     imeAction = ImeAction.Done
                 ),
                 keyboardActions = KeyboardActions(
@@ -288,7 +291,7 @@ fun LoginScreenContent(
         if (showManualSupervisor) {
             ManualInputBottomSheet(
                 onDismiss = { showManualSupervisor = false },
-                onConfirm = { supervisorInput = it },
+                onConfirm = { supervisorInput = it.uppercase() },
                 title = "Crachá do supervisor danificado?",
                 hint = "Digite o código do supervisor",
                 label = "Código do supervisor"
@@ -298,7 +301,7 @@ fun LoginScreenContent(
         if (showManualOperator) {
             ManualInputBottomSheet(
                 onDismiss = { showManualOperator = false },
-                onConfirm = { operatorInput = it },
+                onConfirm = { operatorInput = it.uppercase() },
                 title = "Crachá do colaborador danificado?",
                 hint = "Digite o código do colaborador",
                 label = "Código do colaborador"

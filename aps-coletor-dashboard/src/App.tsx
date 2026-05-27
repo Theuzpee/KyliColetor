@@ -80,10 +80,10 @@ const Barcode: React.FC<{ value: string; height?: number }> = ({ value, height =
     'I': 'N N W N N W W N N',
     'J': 'N N N N W W W N N',
     'K': 'W N N N N N N W W',
-    'L': 'N N W N N N N W W',
+    'L': 'N N N N W W N W N',
     'M': 'W N W N N N N W N',
     'N': 'N N N N W N N W W',
-    'O': 'W N N N W N N W N',
+    'O': 'W N N N N W W N N',
     'P': 'N N W N W N N W N',
     'Q': 'N N N N N N W W W',
     'R': 'W N N N N N W W N',
@@ -130,17 +130,23 @@ const Barcode: React.FC<{ value: string; height?: number }> = ({ value, height =
       width="100%" 
       height={height} 
       viewBox={`0 0 ${currentX} ${height}`} 
-      preserveAspectRatio="none"
-      style={{ display: 'block', background: '#fff', padding: '4px' }}
+      style={{ 
+        display: 'block', 
+        background: '#fff', 
+        padding: '4px',
+        shapeRendering: 'crispEdges',
+        maxWidth: '360px',
+        margin: '0 auto'
+      }}
     >
       {bars.map((bar, idx) => (
-        <rect
-          key={idx}
-          x={bar.x}
-          y={0}
-          width={bar.width}
-          height={height}
-          fill="#000"
+        <rect 
+          key={idx} 
+          x={bar.x} 
+          y={0} 
+          width={bar.width} 
+          height={height} 
+          fill="#000" 
         />
       ))}
     </svg>

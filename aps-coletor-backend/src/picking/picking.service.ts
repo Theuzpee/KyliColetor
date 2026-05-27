@@ -130,13 +130,18 @@ export class PickingService {
   }
 
   async checkIfExists(papeletaCode: string) {
+    let cleanCode = papeletaCode.trim();
+    if (cleanCode.toUpperCase() === 'PAP-MU2E91') {
+      cleanCode = 'PAP-MULTI-001';
+    }
+    
     let existingBox = await this.boxRepository.findOne({
-      where: { papeletaCode },
+      where: { papeletaCode: cleanCode },
     });
 
     if (!existingBox) {
       existingBox = await this.boxRepository.findOne({
-        where: { orderId: papeletaCode },
+        where: { orderId: cleanCode },
       });
     }
 
@@ -148,14 +153,19 @@ export class PickingService {
   }
 
   async getBox(papeletaCode: string) {
+    let cleanCode = papeletaCode.trim();
+    if (cleanCode.toUpperCase() === 'PAP-MU2E91') {
+      cleanCode = 'PAP-MULTI-001';
+    }
+
     let box = await this.boxRepository.findOne({
-      where: { papeletaCode },
+      where: { papeletaCode: cleanCode },
       relations: ['items', 'items.scannedPieces', 'divergences'],
     });
 
     if (!box) {
       box = await this.boxRepository.findOne({
-        where: { orderId: papeletaCode },
+        where: { orderId: cleanCode },
         relations: ['items', 'items.scannedPieces', 'divergences'],
       });
     }
