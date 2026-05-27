@@ -49,7 +49,13 @@ fun ApsColetorNavGraph(checkSessionUseCase: CheckSessionUseCase) {
         }
         
         composable(Routes.PICKING) {
-            PickingScreen()
+            PickingScreen(
+                onNavigateToLogin = {
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(Routes.PICKING) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

@@ -3,8 +3,19 @@ package br.com.grupokyly.apscoletor.presentation.picking
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -18,6 +29,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxFinalizedContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxPartialContent
 import br.com.grupokyly.apscoletor.presentation.picking.components.BoxMultiFloorContent
@@ -37,7 +51,8 @@ import br.com.grupokyly.apscoletor.presentation.theme.PrimaryYellow
 
 @Composable
 fun PickingScreen(
-    viewModel: PickingViewModel = hiltViewModel()
+    viewModel: PickingViewModel = hiltViewModel(),
+    onNavigateToLogin: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current.applicationContext
@@ -53,6 +68,7 @@ fun PickingScreen(
     var showCameraScanner         by remember { mutableStateOf(false) }
     var cameraScannerMode         by remember { mutableStateOf("papeleta") }
     var showManualInputAfterDivergence by remember { mutableStateOf(false) }
+    var showLogoutDialog          by remember { mutableStateOf(false) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicturePreview()
@@ -89,15 +105,41 @@ fun PickingScreen(
         // ── Conteúdo principal por estado ────────────────────────────────────
         when (val state = uiState) {
             is PickingUiState.Idle -> {
-                CameraScannerScreen(
-                    onBarcodeDetected = { barcode ->
-                        viewModel.onEvent(PickingEvent.OnPapeletaScanned(barcode))
-                    },
-                    onDismiss = {},
-                    manualInputTitle = "Papeleta danificada?",
-                    manualInputHint = "Digite o código da papeleta",
-                    manualInputLabel = "Código de barras"
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    CameraScannerScreen(
+                        onBarcodeDetected = { barcode ->
+                            viewModel.onEvent(PickingEvent.OnPapeletaScanned(barcode))
+                        },
+                        onDismiss = {},
+                        manualInputTitle = "Papeleta danificada?",
+                        manualInputHint = "Digite o código da papeleta",
+                        manualInputLabel = "Código de barras"
+                    )
+                    
+                    // Botão de Logout no canto superior direito
+                    IconButton(
+                        onClick = { showLogoutDialog = true },
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .statusBarsPadding()
+                            .padding(top = 12.dp, end = 16.dp)
+                            .size(44.dp)
+                            .background(Color(0xFF1E1E1E).copy(alpha = 0.85f), androidx.compose.foundation.shape.CircleShape)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = "Sair da conta",
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+
+            is PickingUiState.LoggedOut -> {
+                LaunchedEffect(Unit) {
+                    onNavigateToLogin()
+                }
             }
 
             is PickingUiState.LoadingBox -> LoadingContent()
@@ -117,7 +159,11 @@ fun PickingScreen(
                     onSavePartial   = { viewModel.onEvent(PickingEvent.OnSavePartial) },
                     onSaveMultiFloor = { viewModel.onEvent(PickingEvent.OnSaveMultiFloor) },
                     onSkipRequest   = { showSkipSheet = true },
-                    onManualInput   = { code -> viewModel.onEvent(PickingEvent.OnManualInput(code)) }
+                    onManualInput   = { code -> viewModel.onEvent(PickingEvent.OnManualInput(code)) },
+                    onScanClick     = {
+                        cameraScannerMode = "peca"
+                        showCameraScanner = true
+                    }
                 )
             }
 
@@ -139,17 +185,17 @@ fun PickingScreen(
 
             is PickingUiState.BoxFinalized -> BoxFinalizedContent(
                 state = state,
-                onNewBox = { /* reset via viewmodel */ }
+                onNewBox = { viewModel.onEvent(PickingEvent.OnNewBox) }
             )
 
             is PickingUiState.BoxPartial -> BoxPartialContent(
                 state = state,
-                onNewBox = { /* reset via viewmodel */ }
+                onNewBox = { viewModel.onEvent(PickingEvent.OnNewBox) }
             )
 
             is PickingUiState.BoxMultiFloor -> BoxMultiFloorContent(
                 state = state,
-                onNewBox = { /* reset via viewmodel */ }
+                onNewBox = { viewModel.onEvent(PickingEvent.OnNewBox) }
             )
 
             is PickingUiState.Error -> {
@@ -160,7 +206,11 @@ fun PickingScreen(
                         onSavePartial    = { },
                         onSaveMultiFloor = { },
                         onSkipRequest    = { showSkipSheet = true },
-                        onManualInput    = { }
+                        onManualInput    = { },
+                        onScanClick     = {
+                            cameraScannerMode = "peca"
+                            showCameraScanner = true
+                        }
                     )
                 } ?: CameraScannerScreen(
                     onBarcodeDetected = { barcode ->
@@ -235,6 +285,51 @@ fun PickingScreen(
                 title = "Tentar digitar o código?",
                 hint  = "Se souber o código da peça, tente digitá-lo",
                 label = "Código da peça"
+            )
+        }
+
+        // ── Dialog de confirmação de Logout ───────────────────────────────
+        if (showLogoutDialog) {
+            AlertDialog(
+                onDismissRequest = { showLogoutDialog = false },
+                title = {
+                    Text(
+                        text = "Sair da conta?",
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                },
+                text = {
+                    Text(
+                        text = "Você será desconectado e precisará bipar seu crachá novamente para entrar.",
+                        color = Color(0xFFAAAAAA),
+                        fontSize = 14.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showLogoutDialog = false
+                            viewModel.onEvent(PickingEvent.OnLogout)
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFE53935), // Error Red
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Sair")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = { showLogoutDialog = false },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.White)
+                    ) {
+                        Text("Cancelar")
+                    }
+                },
+                containerColor = Color(0xFF1E1E1E),
+                textContentColor = Color.White
             )
         }
     }

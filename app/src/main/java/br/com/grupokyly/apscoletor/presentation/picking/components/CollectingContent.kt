@@ -28,6 +28,8 @@ import br.com.grupokyly.apscoletor.domain.model.AddressConfirmationState
 import br.com.grupokyly.apscoletor.presentation.picking.PickingUiState
 import br.com.grupokyly.apscoletor.presentation.theme.*
 
+import androidx.compose.material.icons.filled.CameraAlt
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CollectingContent(
@@ -36,7 +38,8 @@ fun CollectingContent(
     onSavePartial: () -> Unit,
     onSaveMultiFloor: () -> Unit,
     onSkipRequest: () -> Unit,
-    onManualInput: (String) -> Unit
+    onManualInput: (String) -> Unit,
+    onScanClick: () -> Unit
 ) {
     val progress = if (state.currentItem.quantityRequired > 0) {
         state.collectedCount.toFloat() / state.currentItem.quantityRequired.toFloat()
@@ -160,49 +163,9 @@ fun CollectingContent(
                 trackColor = Color(0xFF222222)
             )
 
-            // BOTÃO DE DIGITAÇÃO MANUAL
-            Spacer(modifier = Modifier.height(8.dp))
-            var showManualInput by remember { mutableStateOf(false) }
-            TextButton(
-                onClick = { showManualInput = true },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Edit,
-                    contentDescription = null,
-                    tint = TextSecondary,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    text = stringResource(R.string.btn_manual_input),
-                    color = TextSecondary,
-                    fontSize = 12.sp
-                )
-            }
-
-            if (showManualInput) {
-                br.com.grupokyly.apscoletor.presentation.components.ManualInputBottomSheet(
-                    onDismiss = { showManualInput = false },
-                    onConfirm = { code ->
-                        onManualInput(code)
-                    },
-                    title = when (state.addressConfirmation) {
-                        AddressConfirmationState.Pending -> "Código do endereço danificado?"
-                        AddressConfirmationState.Confirmed -> "Código da peça danificado?"
-                        else -> "Código danificado?"
-                    },
-                    hint = when (state.addressConfirmation) {
-                        AddressConfirmationState.Pending -> "Digite o endereço do corredor"
-                        AddressConfirmationState.Confirmed -> "Digite o código da peça"
-                        else -> "Digite o código manualmente"
-                    }
-                )
-            }
-
-            // 4. HISTÓRICO DE LEITURAS VISUAL (Rastreabilidade)
+            // 4. HISTÓRICO DE LEITURAS VISUAL (Rastreabilidade) - AGORA LOGO ABAIXO DO 0/5 E PROGRESSO
             if (state.lastScannedItems.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -248,6 +211,84 @@ fun CollectingContent(
                         }
                     }
                 }
+            }
+
+            // 5. BOTÕES DE AÇÃO: ESCANEAR CÓDIGO (CÂMERA) E DIGITAÇÃO MANUAL
+            Spacer(modifier = Modifier.height(16.dp))
+            var showManualInput by remember { mutableStateOf(false) }
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Button(
+                    onClick = onScanClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (state.addressConfirmation == AddressConfirmationState.Confirmed) SuccessGreen else PrimaryYellow,
+                        contentColor = Color.Black
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CameraAlt,
+                        contentDescription = null,
+                        tint = Color.Black,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = if (state.addressConfirmation == AddressConfirmationState.Confirmed) "Escanear Peça" else "Escanear Endereço",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+                
+                OutlinedButton(
+                    onClick = { showManualInput = true },
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    border = BorderStroke(1.dp, Color(0xFF444444)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Digitar Código",
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 13.sp,
+                        color = Color.White
+                    )
+                }
+            }
+
+            if (showManualInput) {
+                br.com.grupokyly.apscoletor.presentation.components.ManualInputBottomSheet(
+                    onDismiss = { showManualInput = false },
+                    onConfirm = { code ->
+                        onManualInput(code)
+                    },
+                    title = when (state.addressConfirmation) {
+                        AddressConfirmationState.Pending -> "Código do endereço danificado?"
+                        AddressConfirmationState.Confirmed -> "Código da peça danificado?"
+                        else -> "Código danificado?"
+                    },
+                    hint = when (state.addressConfirmation) {
+                        AddressConfirmationState.Pending -> "Digite o endereço do corredor"
+                        AddressConfirmationState.Confirmed -> "Digite o código da peça"
+                        else -> "Digite o código manualmente"
+                    }
+                )
             }
         }
 

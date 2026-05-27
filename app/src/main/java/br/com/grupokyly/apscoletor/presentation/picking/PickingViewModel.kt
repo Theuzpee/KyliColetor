@@ -14,6 +14,7 @@ import br.com.grupokyly.apscoletor.domain.usecase.RegisterScanUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.SavePartialBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.SaveMultiFloorBoxUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.SkipPickingItemUseCase
+import br.com.grupokyly.apscoletor.domain.usecase.LogoutUseCase
 import br.com.grupokyly.apscoletor.domain.usecase.RegisterDivergenceUseCase
 import br.com.grupokyly.apscoletor.domain.validator.AddressValidator
 import br.com.grupokyly.apscoletor.hardware.ScannerReceiver
@@ -44,7 +45,8 @@ class PickingViewModel @Inject constructor(
     private val scannerReceiver: ScannerReceiver,
     private val scanFeedbackManager: FeedbackProvider,
     private val clock: Clock,
-    private val sessionManager: br.com.grupokyly.apscoletor.data.local.SessionManager
+    private val sessionManager: br.com.grupokyly.apscoletor.data.local.SessionManager,
+    private val logoutUseCase: LogoutUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<PickingUiState>(PickingUiState.Idle)
@@ -128,6 +130,15 @@ class PickingViewModel @Inject constructor(
             is PickingEvent.OnDebugScan -> handleDebugScan(event.barcode)
             is PickingEvent.OnAdvanceToNextItem -> handleAdvanceToNextItem()
             is PickingEvent.OnResumeBoxConfirmed -> handleResumeBoxConfirmed()
+            is PickingEvent.OnNewBox -> {
+                _uiState.value = PickingUiState.Idle
+            }
+            is PickingEvent.OnLogout -> {
+                viewModelScope.launch {
+                    logoutUseCase()
+                    _uiState.value = PickingUiState.LoggedOut
+                }
+            }
             is PickingEvent.OnManualInput -> {
                 when (val state = _uiState.value) {
                     is PickingUiState.Idle -> handlePapeletaScanned(event.code)

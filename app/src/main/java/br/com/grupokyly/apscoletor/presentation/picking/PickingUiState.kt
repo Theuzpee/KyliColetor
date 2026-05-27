@@ -67,4 +67,6 @@ sealed class PickingUiState {
     ) : PickingUiState()
     
     data class Error(val message: String) : PickingUiState()
+
+    object LoggedOut : PickingUiState()
 }
