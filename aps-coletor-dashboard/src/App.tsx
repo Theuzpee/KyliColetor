@@ -127,15 +127,14 @@ const Barcode: React.FC<{ value: string; height?: number }> = ({ value, height =
 
   return (
     <svg 
-      width="100%" 
+      width={currentX * 2} 
       height={height} 
       viewBox={`0 0 ${currentX} ${height}`} 
       style={{ 
         display: 'block', 
         background: '#fff', 
-        padding: '4px',
+        padding: '16px 24px',
         shapeRendering: 'crispEdges',
-        maxWidth: '360px',
         margin: '0 auto'
       }}
     >
