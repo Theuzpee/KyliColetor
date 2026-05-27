@@ -56,7 +56,6 @@ fun CameraScannerScreen(
         )
     }
 
-    var showManualInput by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -211,41 +210,6 @@ fun CameraScannerScreen(
                 )
             }
 
-            if (!showCloseButton) {
-                // ── Botão "Digitar código de barras" — paleta amarela ────────────
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .navigationBarsPadding()
-                        .padding(bottom = 28.dp, start = 24.dp, end = 24.dp)
-                        .fillMaxWidth()
-                ) {
-                    Button(
-                        onClick = { showManualInput = true },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(54.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = PrimaryYellow,
-                            contentColor   = Color.Black
-                        )
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Edit,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            "Digitar código de barras",
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-
         } else {
             // ── Sem permissão de câmera ──────────────────────────────────────
             Column(
@@ -275,28 +239,7 @@ fun CameraScannerScreen(
                 ) {
                     Text("Conceder permissão", fontWeight = FontWeight.Bold)
                 }
-                Spacer(Modifier.height(12.dp))
-                TextButton(onClick = { showManualInput = true }) {
-                    Icon(Icons.Default.Edit, null, tint = TextSecondary, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.width(6.dp))
-                    Text("Digitar manualmente", color = TextSecondary)
-                }
             }
         }
-    }
-
-    // ── Bottom Sheet de digitação manual ────────────────────────────────────
-    if (showManualInput) {
-        ManualInputBottomSheet(
-            onDismiss = { showManualInput = false },
-            onConfirm = { code ->
-                showManualInput = false
-                onBarcodeDetected(code)
-                onDismiss()
-            },
-            title = manualInputTitle,
-            hint  = manualInputHint,
-            label = manualInputLabel
-        )
     }
 }
