@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Activity, AlertTriangle, CheckCircle, Package, Users, ClipboardList, Clock, Barcode as BarcodeIcon } from 'lucide-react';
+import JsBarcode from 'jsbarcode';
 
 interface ActiveBox {
   id: string;
@@ -56,99 +57,39 @@ interface TelemetryData {
 }
 import './index.css';
 
-// SVG Barcode Generator (Code 39)
-const Barcode: React.FC<{ value: string; height?: number }> = ({ value, height = 60 }) => {
-  const encodings: Record<string, string> = {
-    '0': 'N N W W N N N W N',
-    '1': 'W N N W N N N N W',
-    '2': 'N N W W N N N N W',
-    '3': 'W N W W N N N N N',
-    '4': 'N N N W W N N N W',
-    '5': 'W N N W W N N N N',
-    '6': 'N N W W W N N N N',
-    '7': 'N N N W N N W N W',
-    '8': 'W N N W N N W N N',
-    '9': 'N N W W N N W N N',
-    'A': 'W N N N N W N N W',
-    'B': 'N N W N N W N N W',
-    'C': 'W N W N N W N N N',
-    'D': 'N N N N W W N N W',
-    'E': 'W N N N W W N N N',
-    'F': 'N N W N W W N N N',
-    'G': 'N N N N N W W N W',
-    'H': 'W N N N N W W N N',
-    'I': 'N N W N N W W N N',
-    'J': 'N N N N W W W N N',
-    'K': 'W N N N N N N W W',
-    'L': 'N N N N W W N W N',
-    'M': 'W N W N N N N W N',
-    'N': 'N N N N W N N W W',
-    'O': 'W N N N N W W N N',
-    'P': 'N N W N W N N W N',
-    'Q': 'N N N N N N W W W',
-    'R': 'W N N N N N W W N',
-    'S': 'N N W N N N W W N',
-    'T': 'N N N N W N W W N',
-    'U': 'W W N N N N N N W',
-    'V': 'N W W N N N N N W',
-    'W': 'W W W N N N N N N',
-    'X': 'N W N N W N N N W',
-    'Y': 'W W N N W N N N N',
-    'Z': 'N W W N W N N N N',
-    '-': 'N W N N N N W N W',
-    '.': 'W W N N N N W N N',
-    ' ': 'N W W N N N W N N',
-    '*': 'N W N N W N W N N'
-  };
+// Highly precise and premium Barcode Generator using JsBarcode (Code 128 / Code 39)
+const Barcode: React.FC<{ value: string; height?: number }> = ({ value, height = 80 }) => {
+  const barcodeRef = useRef<SVGSVGElement>(null);
 
-  const formattedValue = `*${value.toUpperCase()}*`;
-  let currentX = 0;
-  const bars: { x: number; width: number }[] = [];
-
-  for (let i = 0; i < formattedValue.length; i++) {
-    const char = formattedValue[i];
-    const encoding = encodings[char] || encodings[' '];
-    const elements = encoding.split(' ');
-
-    elements.forEach((element, index) => {
-      const width = element === 'W' ? 3 : 1;
-      const isBar = index % 2 === 0;
-
-      if (isBar) {
-        bars.push({ x: currentX, width });
+  useEffect(() => {
+    if (barcodeRef.current) {
+      try {
+        JsBarcode(barcodeRef.current, value.toUpperCase(), {
+          format: "CODE128",
+          width: 2,
+          height: height,
+          displayValue: false, // We render the readable code below with superior styling
+          margin: 10,
+          background: "#ffffff",
+          lineColor: "#000000", // Pure black for maximum scanning contrast
+        });
+      } catch (err) {
+        console.error("Failed to generate barcode with JsBarcode:", err);
       }
-      currentX += width;
-    });
-
-    if (i < formattedValue.length - 1) {
-      currentX += 1;
     }
-  }
+  }, [value, height]);
 
   return (
-    <svg 
-      width={currentX * 2} 
-      height={height} 
-      viewBox={`0 0 ${currentX} ${height}`} 
-      style={{ 
-        display: 'block', 
-        background: '#fff', 
-        padding: '16px 24px',
-        shapeRendering: 'crispEdges',
-        margin: '0 auto'
-      }}
-    >
-      {bars.map((bar, idx) => (
-        <rect 
-          key={idx} 
-          x={bar.x} 
-          y={0} 
-          width={bar.width} 
-          height={height} 
-          fill="#000" 
-        />
-      ))}
-    </svg>
+    <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0' }}>
+      <svg 
+        ref={barcodeRef} 
+        style={{ 
+          display: 'block', 
+          maxWidth: '100%', 
+          height: 'auto' 
+        }} 
+      />
+    </div>
   );
 };
 
